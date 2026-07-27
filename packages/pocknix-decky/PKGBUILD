@@ -11,7 +11,7 @@
 # The plugin frontend (dist/index.js) is prebuilt and committed — no node at package build time.
 pkgname=pocknix-decky
 pkgver=0.1.0
-pkgrel=6
+pkgrel=7
 pkgdesc="Decky Loader (under FEX, namespaced binfmt) + Pocknix Control QAM plugin"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -21,12 +21,12 @@ license=('GPL2')
 # /usr/share/pocknix/fex-profiles.json the plugin's FEX tab drives (soft coupling: the plugin
 # carries a fallback copy of the profile contract, so no hard dep).
 depends=('fex-emu' 'fex-rootfs')
-_loaderver=v3.2.6
+_loaderver=v3.2.8-pre1
 source=('pocknix-decky-run' 'pocknix-decky-sync' 'pocknix-decky-sync.service'
         'pocknix-decky-loader.service' 'PluginLoader.json'
         "PluginLoader-${_loaderver}::https://github.com/SteamDeckHomebrew/decky-loader/releases/download/${_loaderver}/PluginLoader")
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            '30f017a36a8baeb8c3dbae884f5d64be987a9b351b3859bf33e88615b653cf5e')
+            '9df160a81df3fc49c96e5665a1d1b3ba5c79de5bf271adc266d6bfedfda399d8')
 
 package() {
   # Loader binary + the version the sync script compares against.
