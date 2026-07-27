@@ -6,7 +6,7 @@
 # steamos-update + armada-update, so when real OTA is built later it's a drop-in body swap.
 pkgname=pocknix-steamos-shim
 pkgver=0.1.0
-pkgrel=4
+pkgrel=5
 pkgdesc="SteamOS update/branch/timezone/format helper stubs for the Steam Deck UI on a non-SteamOS base (until real OTA)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -14,8 +14,8 @@ license=('GPL2')
 # The format shims pkexec /usr/lib/hwsupport/format-device.sh, shipped by pocknix-sdcard-automount.
 depends=('pocknix-sdcard-automount' 'polkit')
 source=('steamos-update' 'steamos-select-branch' 'steamos-set-timezone'
-        'steamos-format-device' 'steamos-format-sdcard')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        'steamos-format-device' 'steamos-format-sdcard' 'jupiter-biosupdate')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   # Steam calls the OS-update helper by its FULL polkit-helper path, not via PATH — verified in
@@ -37,9 +37,15 @@ package() {
   install -Dm755 "${srcdir}/steamos-format-device" "${pkgdir}/usr/bin/steamos-format-device"
   install -Dm755 "${srcdir}/steamos-format-sdcard" "${pkgdir}/usr/bin/steamos-polkit-helpers/steamos-format-sdcard"
   install -Dm755 "${srcdir}/steamos-format-sdcard" "${pkgdir}/usr/bin/steamos-format-sdcard"
-  # DO NOT shim jupiter-biosupdate / jupiter-dock-updater / jupiter-initial-firmware-update. Steam's
-  # BIOS check reads their exit codes with the OPPOSITE convention to steamos-update (it read our
-  # `exit 7` as "BIOS update available"), and a present dock-updater makes Steam think a dock is
-  # plugged in — both produced spurious "update available" prompts. armada ships neither; with the
-  # helper absent Steam gets 127 ("no such capability") and shows nothing. Leave them un-shimmed.
+  # jupiter-biosupdate: MUST be shimmed, but with a DEDICATED always-exit-0 stub. The manual
+  # Settings > System > Check for Updates flow treats a missing helper (127) as a check failure
+  # (YieldingCheckForUpdateBIOS: update check error -> "Update Error" dialog), unlike the
+  # OOBE/background flow which tolerates absence. Reusing the steamos-update script here is wrong:
+  # its `check` exits 7, which the BIOS check reads as "update available" (opposite convention) and
+  # prompts spuriously. exit 0 = "no BIOS update", same as the community BIOS-block stub on Decks.
+  install -Dm755 "${srcdir}/jupiter-biosupdate"    "${pkgdir}/usr/bin/steamos-polkit-helpers/jupiter-biosupdate"
+  install -Dm755 "${srcdir}/jupiter-biosupdate"    "${pkgdir}/usr/bin/jupiter-biosupdate"
+  # DO NOT shim jupiter-dock-updater / jupiter-initial-firmware-update. A present dock-updater
+  # makes Steam think a dock is plugged in (spurious "update available" prompt), and the
+  # initial-firmware helper's absence only costs a harmless startup log line. Leave them un-shimmed.
 }
