@@ -5,18 +5,19 @@
 # devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=1
-pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules"
+pkgrel=2
+pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
-depends=()
+depends=('sudo')
 optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target')
 source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         'inputplumber-sleep-pre' 'inputplumber-sleep-post'
         '20-pocknix-powerkey.conf'
-        '90-pocknix-backlight.rules' '60-pocknix-controllers.rules')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '90-pocknix-backlight.rules' '60-pocknix-controllers.rules'
+        '10-pocknix-wheel')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   # systemd system-sleep hook that dispatches our sleep.d/{pre,post} scripts
@@ -51,4 +52,10 @@ package() {
   # Critical for the InputPlumber 'deck' target (Valve 28de) hidraw that Steam Input reads.
   install -Dm644 "${srcdir}/60-pocknix-controllers.rules" \
     "${pkgdir}/usr/lib/udev/rules.d/60-pocknix-controllers.rules"
+
+  # sudo for the wheel group (deck is in wheel since image creation but the stock
+  # /etc/sudoers grants nothing, so 'sudo' as deck was "not in the sudoers file").
+  # 0440 is the sudoers.d requirement (sudo skips group/world-writable files).
+  install -Dm440 "${srcdir}/10-pocknix-wheel" \
+    "${pkgdir}/etc/sudoers.d/10-pocknix-wheel"
 }
