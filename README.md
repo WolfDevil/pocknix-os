@@ -236,3 +236,8 @@ comparing against upstream, research, boilerplate, and drafting docs like this o
 architecture and every design decision are mine, and nothing lands without me understanding
 and verifying it. I would consider myself an "AI sceptic", however, I'll admit it's been a
 real force multiplier for a lone developer working on this project.
+
+## License
+
+pocknix-os is licensed [GPL-2.0-or-later](LICENSE.md). Vendored third-party components keep
+their upstream licenses - see [docs/licensing.md](docs/licensing.md) for the breakdown.
