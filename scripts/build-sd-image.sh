@@ -250,8 +250,10 @@ EOF
   #   up late, so a disabled udisks2 = empty format list even though the card is present. Enable it
   #   so it is running before Steam inits. (Mounted ext4 libraries still show via our automount; this
   #   is only the raw-drive/format list.) The UDisks2 polkit grant is in 50-pocknix-deck.rules.
+  #   fstrim.timer (weekly): root ext4 is mounted without `discard`, so nothing tells the FTL which
+  #   blocks are free and write amplification climbs for the device's life. Arch doesn't preset it.
   chroot "${root}" systemctl enable sshd iwd NetworkManager systemd-resolved seatd inputplumber \
-        bluetooth upower udisks2 \
+        bluetooth upower udisks2 fstrim.timer \
         pocknix-diag.service pocknix-expand-root.service \
         pocknix-lavd.service pocknix-gamescope-rt.service \
         >/dev/null 2>&1 || true

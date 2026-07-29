@@ -282,17 +282,19 @@ for d in proc sys dev run tmp mnt media flash; do mkdir -p "$RMNT/$d"; done
 # fstab on the internal install, plus the internal FAT at /flash so the kernel-update
 # hook can refresh it later. arm-efi mounts by PARTUUID (matches the grub.cfg pin, and
 # stays unambiguous with an SD inserted); qcom-abl keeps the PARTLABEL convention.
+# noatime matches the SD image's fstab; it was relatime, so an internal install was quietly
+# less protected than the SD it came from.
 if [ "$BOOT_STYLE" = "arm-efi" ]; then
   BOOT_PARTUUID="$(blkid -s PARTUUID -o value "$BOOT_PART")"
   cat > "$RMNT/etc/fstab" <<EOF
 # pocknix-os — internal install (arm-efi; PARTUUID = unambiguous vs an inserted SD)
-PARTUUID=${ROOT_PARTUUID}  /       ext4  rw,relatime         0 1
+PARTUUID=${ROOT_PARTUUID}  /       ext4  rw,noatime          0 1
 PARTUUID=${BOOT_PARTUUID}  /flash  vfat  rw,noatime,nofail   0 2
 EOF
 else
   cat > "$RMNT/etc/fstab" <<EOF
 # pocknix-os — internal install
-PARTLABEL=${ROOT_GPT_NAME}  /       ext4  rw,relatime         0 1
+PARTLABEL=${ROOT_GPT_NAME}  /       ext4  rw,noatime          0 1
 PARTLABEL=${BOOT_GPT_NAME}  /flash  vfat  rw,noatime,nofail   0 2
 EOF
 fi
