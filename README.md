@@ -19,7 +19,9 @@ system, so closer to something like **CachyOS than real SteamOS, Bazzite, or arm
 is locked down or image-based:
 
 - **Mutable.** The root filesystem is writable. Install anything you like with `pacman`.
-- **Updates through pacman.** No image swaps or A/B reboots. `sudo pacman -Syu` and you are current.
+- **Updates through pacman.** No image swaps or A/B reboots. `sudo pacman -Syu` and you are
+  current. Shipping updates as packages rather than system images is deliberate: fixes and
+  improvements land the moment they are ready, for speed of iteration in a niche this new.
 - **Performance tuned per SoC.** A custom kernel with the `scx_lavd` scheduler for
   smooth, low-latency frame pacing, and core packages (the graphics stack and compositor)
   compiled for modern Snapdragon instruction sets rather than a generic ARM baseline.
