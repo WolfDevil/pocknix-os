@@ -52,12 +52,6 @@ native one.
 | Retroid Pocket Nova | SM8550 (QCS8550) | 📋 Planned |
 | AYN Odin 3 | SM8750 | 📋 Planned |
 
-> **Why is the AYN Thor only "planned"?** The Thor is a dual-screen device, and pocknix gaming
-> is built around gamescope, which is single-screen by design. Making the second screen useful
-> means getting Plasma Mobile working in a dual-screen layout, plus controller support inside
-> Plasma Mobile (outside of Steam), which is still being worked on. I also do not have a
-> dual-screen device on hand to test against yet.
-
 ## The kernel
 
 pocknix-os is based on the **ROCKNIX SM8550 kernel** with tweaks layered on top:
