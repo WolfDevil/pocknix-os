@@ -1,7 +1,8 @@
 # pocknix-os
 
-An Arch Linux ARM distro for the **Retroid Pocket 6**. It runs Steam's native ARM client and
-boots straight into gamescope-backed SteamOS mode, tuned for the RP6's Qualcomm SM8550.
+An Arch Linux ARM distro for **Retroid and AYN Snapdragon handhelds**. It runs Steam's native
+ARM client and boots straight into gamescope-backed SteamOS mode, tuned for each device's
+Qualcomm SoC.
 
 Questions, bug reports, or just want to hang out? Join the [pocknix Discord](https://discord.gg/vcDtuNfmC).
 
@@ -12,14 +13,17 @@ Questions, bug reports, or just want to hang out? Join the [pocknix Discord](htt
 
 ## About
 
-pocknix-os turns the RP6 into a handheld that feels like a Steam Deck: power it on and you land
-in Big Picture, pick a game, and play. Under the hood it is a real mutable Arch system, so
-closer to something like **CachyOS than real SteamOS, Bazzite, or armada**. Nothing is locked
-down or image-based:
+pocknix-os turns these handhelds into devices that feel like a Steam Deck: power one on and
+you land in Big Picture, pick a game, and play. Under the hood it is a real mutable Arch
+system, so closer to something like **CachyOS than real SteamOS, Bazzite, or armada**. Nothing
+is locked down or image-based:
 
 - **Mutable.** The root filesystem is writable. Install anything you like with `pacman`.
 - **Updates through pacman.** No image swaps or A/B reboots. `sudo pacman -Syu` and you are current.
-- **Performance tuned for the SM8550.** A custom kernel with the `scx_lavd` scheduler for
+- **Bleeding edge.** Packages come straight from Arch Linux ARM, and key components like Mesa
+  are kept current, or even ahead of release. The world of Steam on ARM Linux is so young that
+  running the freshest packages possible really matters.
+- **Performance tuned per SoC.** A custom kernel with the `scx_lavd` scheduler for
   smooth, low-latency frame pacing, and core packages (the graphics stack and compositor)
   compiled for modern Snapdragon instruction sets rather than a generic ARM baseline.
 - **Sleep and wake.** Suspend/resume works, but is still **experimental**.
@@ -54,10 +58,11 @@ native one.
 
 ## The kernel
 
-pocknix-os is based on the **ROCKNIX SM8550 kernel** with tweaks layered on top:
+pocknix-os builds a kernel per SoC family, based on the **ROCKNIX kernels** with tweaks
+layered on top:
 
 - **`scx_lavd` scheduler** for smoother, more consistent frame rates than the stock scheduler.
-- **RP6 panel driver fixes** locking it to a single stable 120Hz mode.
+- **Panel driver fixes** (e.g. locking the RP6 panel to a single stable 120Hz mode).
 - **UHS-I SDR104 microSD support** ported from Armbian's downstream `sdhci-msm` driver, lifting
   microSD reads from ~13 MB/s to ~85 MB/s.
 - **SteamOS microSD support** (`CONFIG_UNICODE` for casefolded cards) plus an automount stack,
@@ -225,7 +230,7 @@ Linux source and firmware are fetched at build time.
 
 pocknix-os stands on the work of others:
 
-- [**ROCKNIX**](https://github.com/ROCKNIX/distribution) - the kernel, drivers, and RP6
+- [**ROCKNIX**](https://github.com/ROCKNIX/distribution) - the kernels, drivers, and device
   enablement pocknix builds on. This project simply would not exist without it.
 - [**armada**](https://github.com/shuuri-labs/armada) - a sibling RP6 project (Fedora bootc),
   used as a reference for the session wiring and install-to-internal flow.
