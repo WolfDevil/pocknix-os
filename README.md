@@ -3,6 +3,13 @@
 An Arch Linux ARM distro for the **Retroid Pocket 6**. It runs Steam's native ARM client and
 boots straight into gamescope-backed SteamOS mode, tuned for the RP6's Qualcomm SM8550.
 
+Questions, bug reports, or just want to hang out? Join the [pocknix Discord](https://discord.gg/vcDtuNfmC).
+
+> [!WARNING]
+> pocknix-os is **experimental** software. Install and use it at your own risk. Also note that
+> **SSH is enabled by default** and the default password (`pocknix`) is publicly known, so it is
+> strongly recommended you change it: run `passwd` (and `sudo passwd root`) after first boot.
+
 ## About
 
 pocknix-os turns the RP6 into a handheld that feels like a Steam Deck: power it on and you land
@@ -35,14 +42,15 @@ native one.
 
 | Device | SoC Family | Status |
 |---|---|---|
-| Retroid Pocket 6 | SM8550 | ✅ Supported |
-| Retroid Pocket 5 | SM8250 | ✅ Supported |
 | Retroid Pocket Flip 2 | SM8250 | ✅ Supported |
+| Retroid Pocket 5 | SM8250 | ✅ Supported |
+| Retroid Pocket 6 | SM8550 | ✅ Supported |
 | AYN Odin 2 | SM8550 | ✅ Supported |
 | AYN Odin 2 Portal | SM8550 | ✅ Supported |
 | AYN Odin 2 Mini | SM8550 | ✅ Supported |
-| AYN Odin 3 | SM8750 | 🚧 In progress |
 | AYN Thor | SM8550 | 📋 Planned |
+| Retroid Pocket Nova | SM8550 (QCS8550) | 📋 Planned |
+| AYN Odin 3 | SM8750 | 🚧 In progress |
 
 > **Why is the AYN Thor only "planned"?** The Thor is a dual-screen device, and pocknix gaming
 > is built around gamescope, which is single-screen by design. Making the second screen useful
@@ -67,6 +75,9 @@ pocknix-os is based on the **ROCKNIX SM8550 kernel** with tweaks layered on top:
 Grab the image for your device from the [latest release](https://github.com/shuuri-labs/pocknix-os/releases/latest),
 decompress it (`zstd -d`, or let your flasher handle it), and flash it to a microSD card
 (Balena Etcher, `dd`, etc.). Then follow the steps for your SoC family below.
+
+> **Minimum SD card size**: 64 GB works but gets tight fast once games are installed;
+> 128 GB or larger is recommended.
 
 ### SM8550 (Retroid Pocket 6, AYN Odin 2 family)
 
@@ -118,10 +129,12 @@ including how to uninstall and restore the space to Android.
 
 ## How to play games
 
-1. In your Steam **Library**, search for **"Proton 11 ARM"**, then download and install it.
-2. Download a game.
-3. In the game's **Properties → Compatibility**, force it to use **Proton 11 ARM**.
-4. Play.
+Download a game and play - **proton-cachyos ARM64 ships as the default compatibility tool**,
+so no setup is needed.
+
+That said, it is worth trying **Proton 11 ARM** too: it is more bleeding edge and may offer
+better compatibility for some titles. Search for **"Proton 11 ARM"** in your Steam **Library**,
+download and install it, then force it per game under **Properties → Compatibility**.
 
 x86 games run through FEX (x86-on-ARM translation) plus Proton, so many Windows titles "just work". Generally, performance should match or exceed PC emulation under Android through apps like Gamehub/Game Native. Compatibility (the amount of games that boot at all) is likely a little worse, but trust in Gabe - Valve and their contractors are working on it and things are improving rapidly. 
 
@@ -182,6 +195,9 @@ See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
 - **On Snapdragon 8 Gen 2 devices** (Retroid Pocket 6, AYN Odin 2 family), **charging during
   sleep can freeze the device mid-sleep**. Prefer charging while the device is powered on, or
   fully powered off.
+- **MangoHud incurs a slight performance penalty.** It is fine for dialing in settings, but
+  turn it off during real gameplay. I consider this a feature, not a bug. Instead of staring
+  at performance metrics (we're all guilty), just enjoy your games! :)
 - **Not all pre-baked emulator configs have been validated yet.** So far **Eden** (Switch),
   **ARMSX2** (PS2), and **RetroArch mGBA** (Game Boy Advance) are confirmed good; the rest
   ship with sensible defaults but have not been checked on device. More are being worked
