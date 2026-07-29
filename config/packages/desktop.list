@@ -48,7 +48,8 @@ waydroid
 
 # --- app store (Flatpak) ---
 # Discover is the native KDE store and ships a Flatpak backend; flatpak provides the runtime.
-# Flathub is added by pocknix-flathub.service (pocknix-desktop) on first online boot. A GTK store
+# Flathub is added by pocknix-flathub.service (pocknix-desktop), started by its NM dispatcher hook
+# when a link comes up, not at boot. A GTK store
 # like Bazaar is NOT in Arch repos — install it AS a flatpak from Flathub once this is up.
 flatpak              # the Flatpak runtime + CLI
 discover             # plasma-discover — KDE app store with the Flatpak backend

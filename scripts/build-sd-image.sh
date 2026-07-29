@@ -149,9 +149,8 @@ EOF
   # Decky Loader (QAM plugins, incl. Pocknix Control): seed deck's ~/homebrew at boot, then run
   # the loader under FEX in its private-binfmt namespace (see packages/pocknix-decky).
   chroot "${root}" systemctl enable pocknix-decky-sync.service pocknix-decky-loader.service 2>/dev/null || true
-  # Desktop (Plasma Mobile) session: register the Flathub remote on the first online boot so
-  # Discover/flatpak can install apps. Harmless in game-only use (oneshot, no-op once added).
-  chroot "${root}" systemctl enable pocknix-flathub.service 2>/dev/null || true
+  # pocknix-flathub.service is deliberately NOT enabled: pocknix-desktop's NM dispatcher hook
+  # (50-pocknix-flathub) starts it when a link comes up. At boot it always failed (no DNS yet).
   # Waydroid: re-assert the Android /data tuning (nav/density/font/immersive/multi_windows)
   # after each container boot — those settings are wiped by `waydroid init`. See docs/waydroid.md.
   chroot "${root}" systemctl enable pocknix-waydroid-tuning.service 2>/dev/null || true

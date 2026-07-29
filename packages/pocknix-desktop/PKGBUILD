@@ -32,13 +32,15 @@ license=('GPL2')
 # chroot at makepkg time for no reason. The launcher + rotate scripts `command -v`-guard their
 # callees (startplasmamobile, kscreen-doctor) and fail gracefully if the stack is absent.
 depends=('bash')
+install='pocknix-desktop.install'
 source=('pocknix-desktop' 'pocknix-desktop-rotate' 'pocknix-desktop-rotate.desktop'
         'pocknix-desktop-remove-taskpanel' 'pocknix-desktop-remove-taskpanel.desktop'
         'steamos-session-select' 'return-to-gamemode.desktop'
-        'pocknix-flathub-setup' 'pocknix-flathub.service' 'ksplashrc' 'pocknix-x11.conf'
+        'pocknix-flathub-setup' 'pocknix-flathub.service' 'pocknix-flathub-dispatcher'
+        'ksplashrc' 'pocknix-x11.conf'
         'powerdevilrc' 'kscreenlockerrc')
 sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
-            'SKIP')
+            'SKIP' 'SKIP')
 
 package() {
   install -Dm755 "${srcdir}/pocknix-desktop"          "${pkgdir}/usr/bin/pocknix-desktop"
@@ -55,10 +57,14 @@ package() {
   # "Return to Game Mode" tile in the Plasma app grid.
   install -Dm644 "${srcdir}/return-to-gamemode.desktop" \
     "${pkgdir}/usr/share/applications/return-to-gamemode.desktop"
-  # Flathub remote setup for Discover/flatpak (enabled by build-sd-image.sh firstboot_config).
+  # Flathub remote setup for Discover/flatpak. NOT enabled at boot: the service is started by the
+  # NetworkManager dispatcher hook when a connection comes up (see the unit + dispatcher headers).
   install -Dm755 "${srcdir}/pocknix-flathub-setup"    "${pkgdir}/usr/bin/pocknix-flathub-setup"
   install -Dm644 "${srcdir}/pocknix-flathub.service" \
     "${pkgdir}/usr/lib/systemd/system/pocknix-flathub.service"
+  # Dispatcher scripts must be root-owned and not group/world writable or NM refuses to run them.
+  install -Dm755 "${srcdir}/pocknix-flathub-dispatcher" \
+    "${pkgdir}/etc/NetworkManager/dispatcher.d/50-pocknix-flathub"
   # Disable the 30s KSplash fallback (Plasma Mobile never dismisses it) so a session switch isn't
   # stuck behind a splash. System-wide default; only the deck Plasma session reads it.
   install -Dm644 "${srcdir}/ksplashrc"                "${pkgdir}/etc/xdg/ksplashrc"
