@@ -20,12 +20,6 @@ is locked down or image-based:
 
 - **Mutable.** The root filesystem is writable. Install anything you like with `pacman`.
 - **Updates through pacman.** No image swaps or A/B reboots. `sudo pacman -Syu` and you are current.
-- **Bleeding edge.** Most packages come straight from Arch Linux ARM, while some are built
-  in-house to tune, patch, or control the update cadence of key components - Mesa, for
-  example, is kept current or even ahead of release. The world of Steam on ARM Linux is so
-  young that running the freshest packages possible is important. For the same reason,
-  updates ship as packages rather than system images: fixes and improvements land the
-  moment they are ready, for speed of iteration in a niche this new.
 - **Performance tuned per SoC.** A custom kernel with the `scx_lavd` scheduler for
   smooth, low-latency frame pacing, and core packages (the graphics stack and compositor)
   compiled for modern Snapdragon instruction sets rather than a generic ARM baseline.
