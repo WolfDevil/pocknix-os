@@ -50,7 +50,7 @@ native one.
 | AYN Odin 2 Mini | SM8550 | ✅ Supported |
 | AYN Thor | SM8550 | 📋 Planned |
 | Retroid Pocket Nova | SM8550 (QCS8550) | 📋 Planned |
-| AYN Odin 3 | SM8750 | 🚧 In progress |
+| AYN Odin 3 | SM8750 | 📋 Planned |
 
 > **Why is the AYN Thor only "planned"?** The Thor is a dual-screen device, and pocknix gaming
 > is built around gamescope, which is single-screen by design. Making the second screen useful
@@ -191,7 +191,13 @@ See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
 ## Known issues
 
 - **The Steam session can take a while to come up**, especially right after a Steam client
-  update. Be patient - it will get there.
+  update. On first boot, or when entering game mode after a Steam update, you may be left
+  staring at a black screen for a long while. Just be patient and leave the device to do its
+  thing - it will come up. Better ways to show what is happening during these waits are
+  being explored.
+- **Controller support in desktop mode requires Steam to be running** - launch Steam from
+  the desktop session to get controller input there. Even then, emulator controller
+  mappings may not be correct in desktop mode.
 - **On Snapdragon 8 Gen 2 devices** (Retroid Pocket 6, AYN Odin 2 family), **charging during
   sleep can freeze the device mid-sleep**. Prefer charging while the device is powered on, or
   fully powered off.
