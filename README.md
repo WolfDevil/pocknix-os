@@ -60,7 +60,7 @@ native one.
 pocknix-os builds a kernel per SoC family, based on the **ROCKNIX kernels** with tweaks
 layered on top:
 
-- **`scx_lavd` scheduler** for smoother, more consistent frame rates than the stock scheduler.
+- **`scx_lavd` scheduler** for smoother, more consistent frame rates than the stock scheduler, as well as better power efficiency. 
 - **Panel driver fixes** (e.g. locking the RP6 panel to a single stable 120Hz mode).
 - **UHS-I SDR104 microSD support** ported from Armbian's downstream `sdhci-msm` driver, lifting
   microSD reads from ~13 MB/s to ~85 MB/s.
