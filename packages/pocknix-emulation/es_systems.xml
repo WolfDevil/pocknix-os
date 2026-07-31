@@ -45,4 +45,14 @@
         <platform>ps2</platform>
         <theme>ps2</theme>
     </system>
+    <system>
+        <name>psp</name>
+        <fullname>Sony PlayStation Portable</fullname>
+        <path>%ROMPATH%/psp</path>
+        <extension>.chd .CHD .cso .CSO .elf .ELF .iso .ISO .pbp .PBP .prx .PRX .zso .ZSO</extension>
+        <command label="PPSSPP">/usr/lib/pocknix/es-psp --fullscreen %ROM%</command>
+        <command label="Shortcut or script">%ENABLESHORTCUTS% %EMULATOR_OS-SHELL% %ROM%</command>
+        <platform>psp</platform>
+        <theme>psp</theme>
+    </system>
 </systemList>
