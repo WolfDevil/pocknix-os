@@ -1,0 +1,12 @@
+// pocknix-snapshots — let wheel (the deck owner) pkexec pocknix-rollback without a
+// password, same trust model as 50-pocknix-deck.rules (overlay). The QAM plugin
+// backend runs as root and uses systemd-run instead; this grant covers the
+// desktop-session / ssh-as-deck path. The program is self-guarded (btrfs check,
+// staging-before-commit, single-instance lock, interactive confirm without --yes).
+polkit.addRule(function(action, subject) {
+    if (!subject.isInGroup("wheel")) { return; }
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        action.lookup("program") == "/usr/bin/pocknix-rollback") {
+        return polkit.Result.YES;
+    }
+});
