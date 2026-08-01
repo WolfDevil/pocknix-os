@@ -8,6 +8,7 @@ import { currentGame } from "./lib/games";
 import { styles } from "./styles";
 import { Games } from "./tabs/Games";
 import { Library } from "./tabs/Library";
+import { Lighting } from "./tabs/Lighting";
 import { Storage } from "./tabs/Storage";
 import { Updater } from "./tabs/Updater";
 import type { Config } from "./types";
@@ -61,19 +62,19 @@ export function Content() {
   const tabContent = (content: ReactNode) => (
     <div className="pocknix-control-tab-content">{content}</div>
   );
+  const tabs = [
+    { id: "Games", title: tabIcons.Games, content: tabContent(<Games config={config} setConfig={setConfig} reload={load} />) },
+    { id: "Library", title: tabIcons.Library, content: tabContent(<Library />) },
+    ...(config.led.available
+      ? [{ id: "Lighting", title: tabIcons.Lighting, content: tabContent(<Lighting config={config} setConfig={setConfig} reload={load} />) }]
+      : []),
+    { id: "Storage", title: tabIcons.Storage, content: tabContent(<Storage />) },
+    { id: "Updater", title: tabIcons.Updater, content: tabContent(<Updater />) },
+  ];
   return (
     <div className="pocknix-control-tabs">
       <style>{styles}</style>
-      <Tabs
-        activeTab={tab}
-        onShowTab={setTab}
-        tabs={[
-          { id: "Games", title: tabIcons.Games, content: tabContent(<Games config={config} setConfig={setConfig} reload={load} />) },
-          { id: "Library", title: tabIcons.Library, content: tabContent(<Library />) },
-          { id: "Storage", title: tabIcons.Storage, content: tabContent(<Storage />) },
-          { id: "Updater", title: tabIcons.Updater, content: tabContent(<Updater />) },
-        ]}
-      />
+      <Tabs activeTab={tab} onShowTab={setTab} tabs={tabs} />
     </div>
   );
 }

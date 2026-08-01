@@ -2,6 +2,7 @@ import asyncio
 
 from pocknix_control.config import build_config
 from pocknix_control.configio import apply_config, config_dir, export_config, read_config
+from pocknix_control.led import restore_led, set_led, set_led_enabled, set_led_linked
 from pocknix_control.modes import set_fan_mode, set_lavd_mode
 from pocknix_control.sdcard import detect_sdcard, format_sdcard
 from pocknix_control.snapshots import reboot_system, snapshot_status, start_rollback
@@ -13,6 +14,9 @@ class Plugin:
     # Offload blocking work to a thread so a slow call can't stall Decky's asyncio loop.
     async def get_config(self):
         return await asyncio.to_thread(build_config)
+
+    async def _main(self):
+        await asyncio.to_thread(restore_led)
 
     async def detect_sdcard(self):
         return await asyncio.to_thread(detect_sdcard)
@@ -43,6 +47,18 @@ class Plugin:
 
     async def apply_config(self, path, source_appid, target_appid, target_name):
         return await asyncio.to_thread(apply_config, path, source_appid, target_appid, target_name)
+
+    async def set_led(self, side, r, g, b, brightness):
+        await asyncio.to_thread(set_led, side, r, g, b, brightness)
+        return await self.get_config()
+
+    async def set_led_linked(self, linked):
+        await asyncio.to_thread(set_led_linked, linked)
+        return await self.get_config()
+
+    async def set_led_enabled(self, enabled):
+        await asyncio.to_thread(set_led_enabled, enabled)
+        return await self.get_config()
 
     async def check_updates(self):
         return await asyncio.to_thread(check_updates)

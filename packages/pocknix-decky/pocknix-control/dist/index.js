@@ -28,10 +28,9 @@ const getConfig = () => call("get_config");
 const setFanMode = (mode) => call("set_fan_mode", mode);
 const setLavdMode = (mode) => call("set_lavd_mode", mode);
 const saveTweaks = (data) => call("save_tweaks", data);
-const exportConfig = (appid, name, basename, allowOverwrite) => call("export_config", appid, name, basename, allowOverwrite);
-const configDir = () => call("config_dir");
-const readConfig = (path) => call("read_config", path);
-const applyConfig = (path, sourceAppid, targetAppid, targetName) => call("apply_config", path, sourceAppid, targetAppid, targetName);
+const setLed = (side, r, g, b, brightness) => call("set_led", side, r, g, b, brightness);
+const setLedLinked = (linked) => call("set_led_linked", linked);
+const setLedEnabled = (enabled) => call("set_led_enabled", enabled);
 const detectSdcard = () => call("detect_sdcard");
 const formatSdcard = (label) => call("format_sdcard", label);
 const checkUpdates = () => call("check_updates");
@@ -91,9 +90,10 @@ function Icon({ path }) {
 }
 const tabIcons = {
     Games: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("line", { x1: "6", x2: "10", y1: "11", y2: "11" }), SP_JSX.jsx("line", { x1: "8", x2: "8", y1: "9", y2: "13" }), SP_JSX.jsx("line", { x1: "15", x2: "15.01", y1: "12", y2: "12" }), SP_JSX.jsx("line", { x1: "18", x2: "18.01", y1: "10", y2: "10" }), SP_JSX.jsx("path", { d: "M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" })] }) })),
-    Library: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }), SP_JSX.jsx("path", { d: "M8 12h8" }), SP_JSX.jsx("path", { d: "M12 8v8" })] }) })),
+    Power: (SP_JSX.jsx(Icon, { path: SP_JSX.jsx(SP_JSX.Fragment, { children: SP_JSX.jsx("path", { d: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" }) }) })),
     Updater: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), SP_JSX.jsx("polyline", { points: "7 10 12 15 17 10" }), SP_JSX.jsx("line", { x1: "12", x2: "12", y1: "15", y2: "3" })] }) })),
     Storage: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("line", { x1: "22", x2: "2", y1: "12", y2: "12" }), SP_JSX.jsx("path", { d: "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" }), SP_JSX.jsx("line", { x1: "6", x2: "6.01", y1: "16", y2: "16" }), SP_JSX.jsx("line", { x1: "10", x2: "10.01", y1: "16", y2: "16" })] }) })),
+    Lighting: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M9 18h6" }), SP_JSX.jsx("path", { d: "M10 22h4" }), SP_JSX.jsx("path", { d: "M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" })] }) })),
 };
 
 function gameDisplayName(game) {
@@ -227,310 +227,6 @@ const styles = `
       }
     `;
 
-// Per-game Proton selection via SteamClient.Apps. This drives the SAME state as Steam's own
-// per-game compatibility dropdown (SpecifyCompatTool + app details), so the two UIs stay in
-// sync by construction — we never store a shadow copy.
-async function availableCompatTools(appid) {
-    const apps = window.SteamClient?.Apps;
-    if (!apps?.GetAvailableCompatTools)
-        return [];
-    try {
-        const tools = await apps.GetAvailableCompatTools(Number(appid));
-        if (!Array.isArray(tools))
-            return [];
-        return tools
-            .map((tool) => ({
-            name: String(tool?.strToolName ?? ""),
-            label: String(tool?.strDisplayName ?? tool?.strToolName ?? ""),
-        }))
-            .filter((tool) => tool.name);
-    }
-    catch {
-        return [];
-    }
-}
-/** Live view of the game's current tool; fires again when it changes anywhere (incl. Steam's UI). */
-function registerForCompatTool(appid, onChange) {
-    const apps = window.SteamClient?.Apps;
-    if (!apps?.RegisterForAppDetails)
-        return () => { };
-    const registration = apps.RegisterForAppDetails(Number(appid), (details) => {
-        onChange(String(details?.strCompatToolName ?? ""));
-    });
-    return () => registration?.unregister?.();
-}
-function setCompatTool(appid, tool) {
-    window.SteamClient?.Apps?.SpecifyCompatTool?.(Number(appid), tool);
-}
-/** Resolve an imported Proton pick against this device's tools. Unknown ARM-named tools
- *  fall back to the cachy ARM Proton; unknown x86-named ones to a Proton 11. */
-function resolveCompatTool(wanted, tools) {
-    if (!wanted)
-        return { tool: "", fallback: false };
-    if (tools.some((tool) => tool.name === wanted))
-        return { tool: wanted, fallback: false };
-    const haystack = (tool) => `${tool.name} ${tool.label}`;
-    const isArm = /arm/i.test(wanted);
-    const fallback = isArm
-        ? tools.find((tool) => /cachy/i.test(haystack(tool)) && !/x86/i.test(haystack(tool)))
-        : tools.find((tool) => /(^|\D)11(\D|$)/.test(haystack(tool)) && !/arm|cachy/i.test(haystack(tool)));
-    return { tool: fallback?.name || "", fallback: true };
-}
-
-function SelectEdit({ label, value, options, onChange }) {
-    const rgOptions = options.map((option) => (typeof option === "string" ? { data: option, label: option } : option));
-    return (SP_JSX.jsx(DFL.PanelSectionRow, { children: label === undefined ? (SP_JSX.jsx(DFL.Dropdown, { selectedOption: value, rgOptions: rgOptions, onChange: (option) => onChange(option.data) })) : (SP_JSX.jsx(DFL.DropdownItem, { label: label, selectedOption: value, rgOptions: rgOptions, onChange: (option) => onChange(option.data) })) }));
-}
-
-function ExportNameModal({ game, base, onDone, closeModal }) {
-    const [value, setValue] = SP_REACT.useState(base);
-    const [busy, setBusy] = SP_REACT.useState(false);
-    const overwriting = value.trim() === base;
-    const submit = async () => {
-        if (busy || !value.trim())
-            return;
-        setBusy(true);
-        try {
-            const result = await exportConfig(game.appid, game.name, value.trim(), true);
-            onDone(result.path);
-        }
-        catch (error) {
-            toaster.toast({ title: "Export failed", body: String(error) });
-        }
-        closeModal?.();
-    };
-    return (SP_JSX.jsx(DFL.ConfirmModal, { strTitle: "Config Already Exists", strDescription: `${base}.pocknix.json exists. Change the name to save a new config (e.g. ${base}-2 or ${base}-fast), or keep it to overwrite.`, strOKButtonText: busy ? "Saving…" : overwriting ? "Overwrite" : "Save New", bOKDisabled: busy || !value.trim(), onCancel: () => closeModal?.(), onOK: submit, children: SP_JSX.jsx(DFL.TextField, { label: "Name", value: value, disabled: busy, onChange: (event) => setValue(event.target.value) }) }));
-}
-function ImportModal({ path, preview, game, onDone, closeModal }) {
-    const profiles = preview.games;
-    const [source, setSource] = SP_REACT.useState(profiles[0]?.appid || "");
-    const [busy, setBusy] = SP_REACT.useState(false);
-    const from = [preview.device, preview.exported].filter(Boolean).join(", ");
-    const profileOptions = profiles.map((profile) => ({ data: profile.appid, label: profile.name || profile.appid }));
-    const submit = async () => {
-        if (busy || !source)
-            return;
-        setBusy(true);
-        try {
-            const result = await applyConfig(path, source, game.appid, game.name);
-            if (result.protonTool) {
-                const tools = await availableCompatTools(game.appid);
-                const resolved = resolveCompatTool(result.protonTool, tools);
-                if (resolved.tool) {
-                    setCompatTool(game.appid, resolved.tool);
-                    if (resolved.fallback) {
-                        toaster.toast({ title: "Proton fallback", body: `${result.protonTool} not available, using ${resolved.tool}` });
-                    }
-                }
-                else {
-                    toaster.toast({ title: "Proton pick skipped", body: `${result.protonTool} not available here` });
-                }
-            }
-            toaster.toast({ title: "Config applied", body: game.name || game.appid });
-        }
-        catch (error) {
-            toaster.toast({ title: "Import failed", body: String(error) });
-        }
-        closeModal?.();
-        onDone();
-    };
-    return (SP_JSX.jsx(DFL.ConfirmModal, { strTitle: "Import Game Config", strDescription: (from ? `Exported from ${from}. ` : "") + `Settings for ${game.name || game.appid} will be overwritten.`, strOKButtonText: busy ? "Applying…" : "Apply", bOKDisabled: busy || !source, onCancel: () => closeModal?.(), onOK: submit, children: profiles.length > 1 ? (SP_JSX.jsx(SelectEdit, { label: "Profile", value: source, options: profileOptions, onChange: (id) => setSource(String(id)) })) : (SP_JSX.jsxs("div", { className: "pocknix-note", children: ["Profile: ", profiles[0]?.name || profiles[0]?.appid] })) }));
-}
-/** Per-game config export/import; rendered only when a game's per-game settings are enabled. */
-function ConfigSection({ game, reload }) {
-    const doExport = async () => {
-        try {
-            const result = await exportConfig(game.appid, game.name || "", "", false);
-            if (result.exists) {
-                DFL.showModal(SP_JSX.jsx(ExportNameModal, { game: { appid: game.appid, name: game.name || "" }, base: result.base, onDone: (path) => toaster.toast({ title: "Game config exported", body: path }) }));
-                return;
-            }
-            toaster.toast({ title: "Game config exported", body: result.path });
-        }
-        catch (error) {
-            toaster.toast({ title: "Export failed", body: String(error) });
-        }
-    };
-    const doImport = async () => {
-        let path = "";
-        try {
-            const dir = await configDir().catch(() => "/home/deck");
-            // 0 = FileSelectionType.FILE (same const-enum note as AddGame).
-            const picked = await openFilePicker(0, dir, true, true);
-            path = picked?.path || "";
-        }
-        catch (error) {
-            return; // picker closed without a selection
-        }
-        if (!path)
-            return;
-        try {
-            const preview = await readConfig(path);
-            DFL.showModal(SP_JSX.jsx(ImportModal, { path: path, preview: preview, game: game, onDone: reload }));
-        }
-        catch (error) {
-            toaster.toast({ title: "Import failed", body: String(error) });
-        }
-    };
-    return (SP_JSX.jsxs(DFL.PanelSection, { title: "CONFIG", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: doExport, children: "Export Game Config" }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: doImport, children: "Import Game Config" }) }), SP_JSX.jsx("div", { className: "pocknix-note", children: "Per-game tweaks and Proton pick; fan settings and defaults stay local" })] }));
-}
-
-// Audio buffer (PULSE_LATENCY_MSEC): absorbs FEX-mixer overruns (SFX-burst crackle) at the
-// cost of audio latency — keep rhythm games on Game default. 60 measured ~10x fewer underruns.
-const audioLatencyOptions = [
-    { data: "", label: "Game default" },
-    { data: "60", label: "60 ms" },
-    { data: "90", label: "90 ms" },
-    { data: "120", label: "120 ms" },
-];
-const fanOptions = [
-    { data: "quiet", label: "Quiet" },
-    { data: "moderate", label: "Moderate" },
-    { data: "performance", label: "Performance" },
-];
-const lavdOptions = [
-    { data: "autopilot", label: "Autopilot" },
-    { data: "performance", label: "Performance" },
-];
-const globalChoice = { data: "", label: "Use global" };
-function EnvVarsModal({ initial, onSave, closeModal }) {
-    const [value, setValue] = SP_REACT.useState(initial);
-    return (SP_JSX.jsx(DFL.ConfirmModal, { strTitle: "Environment Variables", strDescription: 'Space-separated KEY=VALUE pairs; quote values with spaces, e.g. DXVK_CONFIG="dxgi.customDeviceDesc = GTX 480". Steam launch options win over these.', strOKButtonText: "Save", onCancel: () => closeModal?.(), onOK: () => {
-            onSave(value.trim());
-            closeModal?.();
-        }, children: SP_JSX.jsx(DFL.TextField, { label: "Variables", value: value, onChange: (event) => setValue(event.target.value) }) }));
-}
-function EnvVarsButton({ value, onSave }) {
-    return (SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", description: value ? value : "None set", onClick: () => DFL.showModal(SP_JSX.jsx(EnvVarsModal, { initial: value, onSave: onSave })), children: "Environment Variables" }) }));
-}
-/** Per-game fan/scheduler overrides ("" = follow the global mode). */
-function PerfFields({ values, patch }) {
-    const perGameFan = [globalChoice, ...fanOptions];
-    const perGameLavd = [globalChoice, ...lavdOptions];
-    const fanValue = perGameFan.some((option) => option.data === String(values.fanMode ?? "")) ? String(values.fanMode ?? "") : "";
-    const lavdValue = perGameLavd.some((option) => option.data === String(values.lavdMode ?? "")) ? String(values.lavdMode ?? "") : "";
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "CPU Scheduler", value: lavdValue, options: perGameLavd, onChange: (id) => patch({ lavdMode: id }) }), SP_JSX.jsx(SelectEdit, { label: "Fan Curve", value: fanValue, options: perGameFan, onChange: (id) => patch({ fanMode: id }) })] }));
-}
-/** The per-game tweak controls, shared by the Games tab and the library context-menu modal. */
-function TweakFields({ config, appid, values, patch }) {
-    // Proton pick is Steam's own per-game compat setting (see lib/compat.ts) — read live and
-    // written straight back to Steam, so it mirrors the game-properties dropdown both ways.
-    const [compatTools, setCompatTools] = SP_REACT.useState([]);
-    const [currentTool, setCurrentTool] = SP_REACT.useState("");
-    SP_REACT.useEffect(() => {
-        setCompatTools([]);
-        setCurrentTool("");
-        if (!appid)
-            return;
-        let live = true;
-        availableCompatTools(appid).then((tools) => {
-            if (live)
-                setCompatTools(tools);
-        });
-        const unregister = registerForCompatTool(appid, (tool) => {
-            if (live)
-                setCurrentTool(tool);
-        });
-        return () => {
-            live = false;
-            unregister();
-        };
-    }, [appid]);
-    const compatOptions = [
-        { data: "", label: "Steam default" },
-        ...compatTools.map((tool) => ({ data: tool.name, label: tool.label })),
-    ];
-    const compatValue = compatOptions.some((option) => option.data === currentTool) ? currentTool : "";
-    const presets = config.fexProfiles || {};
-    const storedProfile = values.fexProfile;
-    const fexValue = storedProfile && presets[storedProfile] ? storedProfile : "default";
-    const fexOptions = Object.entries(presets).map(([id, profile]) => ({ data: id, label: profile.label }));
-    const storedLatency = String(values.audioLatency ?? "");
-    const audioValue = audioLatencyOptions.some((option) => option.data === storedLatency) ? storedLatency : "";
-    const mesaOptions = [{ data: "", label: "System default" }, ...(config.mesaVersions || [])];
-    const storedMesa = String(values.mesaVersion ?? "");
-    const mesaValue = mesaOptions.some((option) => option.data === storedMesa) ? storedMesa : "";
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "Proton Version", value: compatValue, options: compatOptions, onChange: (name) => {
-                    setCurrentTool(String(name));
-                    setCompatTool(appid, String(name));
-                } }), SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => patch({ fexProfile: id }) }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patch({ audioLatency: id }) }), SP_JSX.jsx(SelectEdit, { label: "Mesa Version", value: mesaValue, options: mesaOptions, onChange: (id) => patch({ mesaVersion: id }) }), SP_JSX.jsx(EnvVarsButton, { value: String(values.envVars ?? ""), onSave: (next) => patch({ envVars: next }) })] }));
-}
-
-function clone(obj) {
-    return JSON.parse(JSON.stringify(obj));
-}
-
-function Games({ config, setConfig, reload }) {
-    const runtimeGame = config.game;
-    const games = availableGames(config);
-    const game = config.selectedGame || runtimeGame || null;
-    const tweaks = config.tweaks;
-    const gameSettings = game?.appid ? tweaks.games[game.appid] || {} : {};
-    const editingDefault = !game?.appid;
-    const perGameEnabled = !!(game?.appid && gameSettings.enabled === true);
-    const values = editingDefault || !perGameEnabled ? tweaks.global : { ...tweaks.global, ...gameSettings };
-    const patchSettings = (patch) => {
-        setConfig((current) => {
-            if (!current)
-                return current;
-            const next = clone(current);
-            if (editingDefault) {
-                Object.assign(next.tweaks.global, patch);
-            }
-            else if (perGameEnabled) {
-                const existing = next.tweaks.games[game.appid] || {};
-                next.tweaks.games[game.appid] = { ...existing, enabled: true, name: game.name || "", ...patch };
-            }
-            return next;
-        });
-    };
-    const setPerGameEnabled = (enabled) => {
-        if (!game?.appid)
-            return;
-        setConfig((current) => {
-            if (!current)
-                return current;
-            const next = clone(current);
-            next.tweaks.games[game.appid] = {
-                ...(next.tweaks.games[game.appid] || {}),
-                enabled,
-                name: game.name || "",
-            };
-            return next;
-        });
-    };
-    // "" is the explicit Default target, not "nothing selected"; store a sentinel
-    // so it doesn't fall back to the running game in the selectedGame derivation.
-    const setSelectedGame = (appid) => {
-        const id = String(appid);
-        if (!id) {
-            setConfig((current) => (current ? { ...current, selectedGame: { appid: "", name: "Default" } } : current));
-            return;
-        }
-        const saved = games.find((candidate) => candidate.appid === id);
-        setConfig((current) => (current ? { ...current, selectedGame: saved || null } : current));
-    };
-    // Default target: FEX/audio/env edit tweaks.global; fan + scheduler are the LIVE system
-    // modes, applied immediately through the backend.
-    const applyMode = async (setter, mode) => {
-        try {
-            const next = await setter(mode);
-            setConfig((current) => (current ? { ...current, fanMode: next.fanMode, lavdMode: next.lavdMode } : current));
-        }
-        catch (error) {
-            reload();
-        }
-    };
-    const presets = config.fexProfiles || {};
-    const storedProfile = values.fexProfile;
-    const fexValue = storedProfile && presets[storedProfile] ? storedProfile : "default";
-    const fexOptions = Object.entries(presets).map(([id, profile]) => ({ data: id, label: profile.label }));
-    const storedLatency = String(values.audioLatency ?? "");
-    const audioValue = audioLatencyOptions.some((option) => option.data === storedLatency) ? storedLatency : "";
-    const showFields = editingDefault || perGameEnabled;
-    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "PERFORMANCE & GAME TWEAKS", children: [SP_JSX.jsx(SelectEdit, { label: "Game", value: game?.appid || "", options: editTargetOptions(config), onChange: setSelectedGame }), !editingDefault ? SP_JSX.jsx(DFL.ToggleField, { label: "Use Per-Game Settings", checked: perGameEnabled, onChange: setPerGameEnabled }) : null] }), showFields ? (SP_JSX.jsx(DFL.PanelSection, { title: "PERFORMANCE", children: editingDefault ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "CPU Scheduler", value: config.lavdMode, options: lavdOptions, onChange: (mode) => applyMode(setLavdMode, mode) }), SP_JSX.jsx(SelectEdit, { label: "Fan Curve", value: config.fanMode, options: fanOptions, onChange: (mode) => applyMode(setFanMode, mode) })] })) : (SP_JSX.jsx(PerfFields, { values: values, patch: patchSettings })) })) : null, showFields ? (SP_JSX.jsxs(DFL.PanelSection, { title: "GAME TWEAKS", children: [SP_JSX.jsx("div", { className: "pocknix-note", children: "Changes apply on next game launch" }), editingDefault ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => patchSettings({ fexProfile: id }) }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patchSettings({ audioLatency: id }) }), SP_JSX.jsx(EnvVarsButton, { value: String(values.envVars ?? ""), onSave: (next) => patchSettings({ envVars: next }) })] })) : (SP_JSX.jsx(TweakFields, { config: config, appid: game.appid, values: values, patch: patchSettings }))] })) : null, !editingDefault && perGameEnabled ? (SP_JSX.jsx(ConfigSection, { game: { appid: game.appid, name: game.name || "" }, reload: reload })) : null] }));
-}
-
 // Non-Steam shortcut creation via SteamClient.Apps. The Steam file browser can't open a
 // new window under the Plasma Mobile X11 session, so Decky's in-UI file picker plus this
 // module replace the stock "Add a Non-Steam Game" flow.
@@ -597,8 +293,231 @@ function AddGameSection() {
     return (SP_JSX.jsxs(DFL.PanelSection, { title: "LIBRARY", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ButtonItem, { layout: "below", onClick: pick, children: "Add Non-Steam Game" }) }), SP_JSX.jsx("div", { className: "pocknix-note", children: "Pick an executable to add it to your Steam library" })] }));
 }
 
-function Library() {
-    return SP_JSX.jsx(AddGameSection, {});
+function SelectEdit({ label, value, options, onChange }) {
+    const rgOptions = options.map((option) => (typeof option === "string" ? { data: option, label: option } : option));
+    return (SP_JSX.jsx(DFL.PanelSectionRow, { children: label === undefined ? (SP_JSX.jsx(DFL.Dropdown, { selectedOption: value, rgOptions: rgOptions, onChange: (option) => onChange(option.data) })) : (SP_JSX.jsx(DFL.DropdownItem, { label: label, selectedOption: value, rgOptions: rgOptions, onChange: (option) => onChange(option.data) })) }));
+}
+
+function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
+// Audio buffer (PULSE_LATENCY_MSEC): absorbs FEX-mixer overruns (SFX-burst crackle) at the
+// cost of audio latency — keep rhythm games on Game default. 60 measured ~10x fewer underruns.
+const audioLatencyOptions = [
+    { data: "", label: "Game default" },
+    { data: "60", label: "60 ms" },
+    { data: "90", label: "90 ms" },
+    { data: "120", label: "120 ms" },
+];
+function Games({ config, setConfig }) {
+    const runtimeGame = config.game;
+    const games = availableGames(config);
+    const game = config.selectedGame || runtimeGame || null;
+    const tweaks = config.tweaks;
+    const gameSettings = game?.appid ? tweaks.games[game.appid] || {} : {};
+    const editingDefault = !game?.appid;
+    const perGameEnabled = !!(game?.appid && gameSettings.enabled === true);
+    const values = editingDefault || !perGameEnabled ? tweaks.global : { ...tweaks.global, ...gameSettings };
+    const patchSettings = (patch) => {
+        setConfig((current) => {
+            if (!current)
+                return current;
+            const next = clone(current);
+            if (editingDefault) {
+                Object.assign(next.tweaks.global, patch);
+            }
+            else if (perGameEnabled) {
+                const existing = next.tweaks.games[game.appid] || {};
+                next.tweaks.games[game.appid] = { ...existing, enabled: true, name: game.name || "", ...patch };
+            }
+            return next;
+        });
+    };
+    const setPerGameEnabled = (enabled) => {
+        if (!game?.appid)
+            return;
+        setConfig((current) => {
+            if (!current)
+                return current;
+            const next = clone(current);
+            next.tweaks.games[game.appid] = {
+                ...(next.tweaks.games[game.appid] || {}),
+                enabled,
+                name: game.name || "",
+            };
+            return next;
+        });
+    };
+    // "" is the explicit Default target, not "nothing selected"; store a sentinel
+    // so it doesn't fall back to the running game in the selectedGame derivation.
+    const setSelectedGame = (appid) => {
+        const id = String(appid);
+        if (!id) {
+            setConfig((current) => (current ? { ...current, selectedGame: { appid: "", name: "Default" } } : current));
+            return;
+        }
+        const saved = games.find((candidate) => candidate.appid === id);
+        setConfig((current) => (current ? { ...current, selectedGame: saved || null } : current));
+    };
+    const presets = config.fexProfiles || {};
+    const storedProfile = values.fexProfile;
+    const fexValue = storedProfile && presets[storedProfile] ? storedProfile : "default";
+    const fexOptions = Object.entries(presets).map(([id, profile]) => ({ data: id, label: profile.label }));
+    const storedLatency = String(values.audioLatency ?? "");
+    const audioValue = audioLatencyOptions.some((option) => option.data === storedLatency) ? storedLatency : "";
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "GAME TWEAKS", children: [SP_JSX.jsx(SelectEdit, { label: "Game", value: game?.appid || "", options: editTargetOptions(config), onChange: setSelectedGame }), SP_JSX.jsx("div", { className: "pocknix-note", children: "Changes apply on next game launch" }), !editingDefault ? SP_JSX.jsx(DFL.ToggleField, { label: "Use Per-Game Settings", checked: perGameEnabled, onChange: setPerGameEnabled }) : null, editingDefault || perGameEnabled ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(SelectEdit, { label: "FEX Preset", value: fexValue, options: fexOptions, onChange: (id) => patchSettings({ fexProfile: id }) }), SP_JSX.jsx(SelectEdit, { label: "Audio Buffer", value: audioValue, options: audioLatencyOptions, onChange: (id) => patchSettings({ audioLatency: id }) })] })) : null] }), SP_JSX.jsx(AddGameSection, {})] }));
+}
+
+// SliderField has only onChange (no onChangeEnd), so commits are debounced. The
+// pending value lives in a ref so the unmount flush always sees the latest edit, not
+// a value captured when the component first mounted.
+const COMMIT_DELAY = 350;
+function ColorControls({ zone, hsv, onCommit }) {
+    const [hue, saturation, value] = hsv;
+    const [local, setLocal] = SP_REACT.useState(hsv);
+    const pending = SP_REACT.useRef(null);
+    const onCommitRef = SP_REACT.useRef(onCommit);
+    onCommitRef.current = onCommit;
+    SP_REACT.useEffect(() => {
+        setLocal(hsv);
+    }, [hue, saturation, value]);
+    const schedule = (next) => {
+        setLocal(next);
+        pending.current = next;
+    };
+    SP_REACT.useEffect(() => {
+        if (pending.current === null)
+            return;
+        const snapshot = pending.current;
+        const timer = window.setTimeout(() => {
+            pending.current = null;
+            onCommitRef.current(snapshot[0], snapshot[1], snapshot[2]);
+        }, COMMIT_DELAY);
+        return () => window.clearTimeout(timer);
+    }, [local]);
+    SP_REACT.useEffect(() => () => {
+        if (pending.current !== null) {
+            const snapshot = pending.current;
+            pending.current = null;
+            onCommitRef.current(snapshot[0], snapshot[1], snapshot[2]);
+        }
+    }, []);
+    const setHue = (h) => schedule([h, local[1], local[2]]);
+    const setSaturation = (s) => schedule([local[0], s, local[2]]);
+    const setValue = (v) => schedule([local[0], local[1], v]);
+    const [h, s] = local;
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Hue", value: h, min: 0, max: 359, step: 1, showValue: true, validValues: "range", valueSuffix: "\u00B0", bottomSeparator: "thick", className: `pocknix-led-${zone}-h`, onChange: setHue }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Saturation", value: s, min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-s`, onChange: setSaturation }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Brightness", value: local[2], min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-v`, onChange: setValue }) }), SP_JSX.jsx("style", { children: `
+        .pocknix-led-${zone}-h .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right,
+            hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%),
+            hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+        .pocknix-led-${zone}-s .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right, hsl(0,0%,100%), hsl(${h},100%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+        .pocknix-led-${zone}-v .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right, hsl(0,0%,0%), hsl(${h},${s}%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+      ` })] }));
+}
+
+// HSV <-> RGB conversion for the stick-light color picker.
+function hsvToRgb(h, s, v) {
+    const hh = ((h % 360) + 360) % 360;
+    const ss = Math.max(0, Math.min(100, s)) / 100;
+    const vv = Math.max(0, Math.min(100, v)) / 100;
+    const c = vv * ss;
+    const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+    const m = vv - c;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    if (hh < 60)
+        [r, g, b] = [c, x, 0];
+    else if (hh < 120)
+        [r, g, b] = [x, c, 0];
+    else if (hh < 180)
+        [r, g, b] = [0, c, x];
+    else if (hh < 240)
+        [r, g, b] = [0, x, c];
+    else if (hh < 300)
+        [r, g, b] = [x, 0, c];
+    else
+        [r, g, b] = [c, 0, x];
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+function rgbToHsv(r, g, b) {
+    const rr = r / 255;
+    const gg = g / 255;
+    const bb = b / 255;
+    const max = Math.max(rr, gg, bb);
+    const min = Math.min(rr, gg, bb);
+    const delta = max - min;
+    let h = 0;
+    let s = 0;
+    const v = max;
+    if (delta !== 0) {
+        s = delta / max;
+        if (max === rr)
+            h = ((gg - bb) / delta + (gg < bb ? 6 : 0)) / 6;
+        else if (max === gg)
+            h = ((bb - rr) / delta + 2) / 6;
+        else
+            h = ((rr - gg) / delta + 4) / 6;
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
+}
+
+// V doubles as brightness: hsvToRgb bakes it into the color channels, and it's also
+// mirrored onto the hardware brightness (0-255) so dimming scales the whole ring.
+function commit(side, h, s, v, setConfig, reload) {
+    const [r, g, b] = hsvToRgb(h, s, v);
+    const brightness = Math.round((v / 100) * 255);
+    setLed(side, r, g, b, brightness)
+        .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+        .catch(() => reload());
+}
+function Lighting({ config, setConfig, reload }) {
+    const led = config.led;
+    const leftHsv = rgbToHsv(led.left.r, led.left.g, led.left.b);
+    const rightHsv = rgbToHsv(led.right.r, led.right.g, led.right.b);
+    const commitLeft = (h, s, v) => commit("left", h, s, v, setConfig, reload);
+    const commitRight = (h, s, v) => commit("right", h, s, v, setConfig, reload);
+    const commitBoth = (h, s, v) => commit("both", h, s, v, setConfig, reload);
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "STICK LIGHTS", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Enable", checked: led.enabled, onChange: (value) => setLedEnabled(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+                                .catch(() => reload()) }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Link Left & Right", description: "Match both sticks to the same color.", checked: led.linked, disabled: !led.enabled, onChange: (value) => setLedLinked(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+                                .catch(() => reload()) }) })] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, onCommit: commitRight }) })] })))] }));
+}
+
+const fanOptions = [
+    { data: "quiet", label: "Quiet" },
+    { data: "moderate", label: "Moderate" },
+    { data: "performance", label: "Performance" },
+];
+const lavdOptions = [
+    { data: "autopilot", label: "Autopilot" },
+    { data: "performance", label: "Performance" },
+];
+function Power({ config, setConfig, reload }) {
+    const applyMode = async (setter, mode) => {
+        try {
+            const next = await setter(mode);
+            setConfig((current) => (current ? { ...current, fanMode: next.fanMode, lavdMode: next.lavdMode } : current));
+        }
+        catch (error) {
+            reload();
+        }
+    };
+    return (SP_JSX.jsxs(DFL.PanelSection, { title: "PERFORMANCE", children: [SP_JSX.jsx(SelectEdit, { label: "Fan Curve", value: config.fanMode, options: fanOptions, onChange: (mode) => applyMode(setFanMode, mode) }), SP_JSX.jsx(SelectEdit, { label: "CPU Scheduler", value: config.lavdMode, options: lavdOptions, onChange: (mode) => applyMode(setLavdMode, mode) })] }));
 }
 
 function cardSummary(card) {
@@ -860,116 +779,24 @@ function Content() {
     if (!config)
         return SP_JSX.jsx(DFL.PanelSection, { title: "Pocknix Control", children: SP_JSX.jsx(DFL.Field, { label: message }) });
     const tabContent = (content) => (SP_JSX.jsx("div", { className: "pocknix-control-tab-content", children: content }));
-    return (SP_JSX.jsxs("div", { className: "pocknix-control-tabs", children: [SP_JSX.jsx("style", { children: styles }), SP_JSX.jsx(DFL.Tabs, { activeTab: tab, onShowTab: setTab, tabs: [
-                    { id: "Games", title: tabIcons.Games, content: tabContent(SP_JSX.jsx(Games, { config: config, setConfig: setConfig, reload: load })) },
-                    { id: "Library", title: tabIcons.Library, content: tabContent(SP_JSX.jsx(Library, {})) },
-                    { id: "Storage", title: tabIcons.Storage, content: tabContent(SP_JSX.jsx(Storage, {})) },
-                    { id: "Updater", title: tabIcons.Updater, content: tabContent(SP_JSX.jsx(Updater, {})) },
-                ] })] }));
+    const tabs = [
+        { id: "Games", title: tabIcons.Games, content: tabContent(SP_JSX.jsx(Games, { config: config, setConfig: setConfig })) },
+        { id: "Power", title: tabIcons.Power, content: tabContent(SP_JSX.jsx(Power, { config: config, setConfig: setConfig, reload: load })) },
+        ...(config.led.available
+            ? [{ id: "Lighting", title: tabIcons.Lighting, content: tabContent(SP_JSX.jsx(Lighting, { config: config, setConfig: setConfig, reload: load })) }]
+            : []),
+        { id: "Storage", title: tabIcons.Storage, content: tabContent(SP_JSX.jsx(Storage, {})) },
+        { id: "Updater", title: tabIcons.Updater, content: tabContent(SP_JSX.jsx(Updater, {})) },
+    ];
+    return (SP_JSX.jsxs("div", { className: "pocknix-control-tabs", children: [SP_JSX.jsx("style", { children: styles }), SP_JSX.jsx(DFL.Tabs, { activeTab: tab, onShowTab: setTab, tabs: tabs })] }));
 }
 
-/** Standalone per-game settings, opened from the library context menu. Saves on each change
- *  (no QAM debounce lifecycle here; the modal has an explicit close). */
-function GameSettingsModal({ appid, name, closeModal }) {
-    const [config, setConfig] = SP_REACT.useState(null);
-    SP_REACT.useEffect(() => {
-        getConfig()
-            .then(setConfig)
-            .catch(() => closeModal?.());
-    }, []);
-    if (!config)
-        return SP_JSX.jsx(DFL.ModalRoot, { closeModal: closeModal, children: "Loading\u2026" });
-    const gameSettings = config.tweaks.games[appid] || {};
-    const enabled = gameSettings.enabled === true;
-    const values = enabled ? { ...config.tweaks.global, ...gameSettings } : config.tweaks.global;
-    const update = (mutate) => {
-        const next = clone(config);
-        mutate(next);
-        setConfig(next);
-        saveTweaks(next.tweaks).catch(() => { });
-    };
-    const patch = (fields) => update((next) => {
-        const existing = next.tweaks.games[appid] || {};
-        next.tweaks.games[appid] = { ...existing, enabled: true, name, ...fields };
-    });
-    return (SP_JSX.jsxs(DFL.ModalRoot, { closeModal: closeModal, children: [SP_JSX.jsx("div", { style: { fontWeight: 600, marginBottom: "8px" }, children: name || `App ${appid}` }), SP_JSX.jsx(DFL.ToggleField, { label: "Use Per-Game Settings", checked: enabled, onChange: (on) => update((next) => {
-                    next.tweaks.games[appid] = { ...(next.tweaks.games[appid] || {}), enabled: on, name };
-                }) }), enabled ? (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(PerfFields, { values: values, patch: patch }), SP_JSX.jsx(TweakFields, { config: config, appid: appid, values: values, patch: patch }), SP_JSX.jsx(ConfigSection, { game: { appid, name }, reload: () => getConfig().then(setConfig).catch(() => { }) })] })) : null] }));
-}
-
-// Adds "Pocknix Settings" to the library entry context menu (the Start-button menu).
-// The menu class is no longer a module export: locate its module by the
-// "().LibraryContextMenu" classname marker, take the wrapper member (the one injecting
-// `navigator:` via the jsx runtime), and fake-render it — the element's type is the real
-// class. Steam UI internals are unversioned, so every step is guarded: if the shape
-// changes we lose the menu item, never the plugin.
-function patchLibraryContextMenu() {
-    try {
-        const menuModule = DFL.findModuleChild((mod) => {
-            if (typeof mod !== "object" || !mod)
-                return undefined;
-            for (const prop in mod) {
-                try {
-                    if (mod[prop]?.toString?.()?.includes("().LibraryContextMenu"))
-                        return mod;
-                }
-                catch (error) { }
-            }
-            return undefined;
-        });
-        if (!menuModule)
-            return () => { };
-        const wrapper = Object.values(menuModule).find((member) => {
-            try {
-                return typeof member === "function" && member?.toString?.()?.includes("navigator:");
-            }
-            catch (error) {
-                return false;
-            }
-        });
-        if (!wrapper)
-            return () => { };
-        const LibraryContextMenu = DFL.fakeRenderComponent(wrapper)?.type;
-        if (!LibraryContextMenu?.prototype?.BuildManageSubmenu)
-            return () => { };
-        // Patch the Manage submenu builder rather than the top-level render, so the entry
-        // lands under Manage. The builder's return shape is guarded both ways (plain item
-        // array vs element with children).
-        const patch = DFL.afterPatch(LibraryContextMenu.prototype, "BuildManageSubmenu", function (_args, ret) {
-            try {
-                const overview = this.props?.overview;
-                const appid = overview?.appid;
-                if (!appid)
-                    return ret;
-                const children = Array.isArray(ret) ? ret : ret?.props?.children;
-                if (!Array.isArray(children))
-                    return ret;
-                if (children.some((child) => child?.key === "pocknix-settings"))
-                    return ret;
-                children.push(SP_JSX.jsx(DFL.MenuItem, { onSelected: () => DFL.showModal(SP_JSX.jsx(GameSettingsModal, { appid: String(appid), name: String(overview?.display_name ?? "") })), children: "Pocknix Settings" }, "pocknix-settings"));
-            }
-            catch (error) { }
-            return ret;
-        });
-        return () => patch.unpatch();
-    }
-    catch (error) {
-        return () => { };
-    }
-}
-
-var index = definePlugin(() => {
-    const unpatchContextMenu = patchLibraryContextMenu();
-    return {
-        name: "Pocknix Control",
-        content: SP_JSX.jsx(Content, {}),
-        icon: SP_JSX.jsx("div", { style: { fontWeight: 700 }, children: "P" }),
-        alwaysRender: true,
-        onDismount() {
-            unpatchContextMenu();
-        },
-    };
-});
+var index = definePlugin(() => ({
+    name: "Pocknix Control",
+    content: SP_JSX.jsx(Content, {}),
+    icon: SP_JSX.jsx("div", { style: { fontWeight: 700 }, children: "P" }),
+    alwaysRender: true,
+}));
 
 export { index as default };
 //# sourceMappingURL=index.js.map
