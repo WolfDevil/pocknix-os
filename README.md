@@ -138,12 +138,19 @@ including how to uninstall and restore the space to Android.
 
 Download a game, then **set a compatibility tool for it**: open the game's
 **Properties → Compatibility**, tick **"Force the use of a specific Steam Play compatibility
-tool"** and pick **Proton-CachyOS 11 (ARM64)**, which ships with pocknix. This is a per game
+tool"** and pick **Proton-GE 11 (ARM64)**, which ships with pocknix. This is a per game
 setting, so repeat it for each title you install.
 
-It is also worth trying **Proton 11 ARM** too: it is more bleeding edge and may offer
-better compatibility for some titles. Search for **"Proton 11 ARM"** in your Steam **Library**,
-download and install it, then force it per game the same way.
+If a game misbehaves, try the other tools:
+
+- **Proton-CachyOS 11 (ARM64)**, also shipped with pocknix, so it is in the same dropdown.
+- **Proton 11 ARM**, Valve's own build: it is more bleeding edge and may offer better
+  compatibility for some titles. Unlike the other two, it needs to be downloaded manually.
+  Search for **"Proton 11 ARM"** in your Steam **Library**, download and install it, then
+  force it per game the same way as the other two.
+- **The normal (x86) Protons** should "just work" too, but performance will be worse than
+  the native ARM builds. Only reach for one when you cannot get a game to boot at all on an
+  ARM Proton.
 
 x86 games run through FEX (x86-on-ARM translation) plus Proton, so many Windows titles "just work". Generally, performance should match or exceed PC emulation under Android through apps like Gamehub/Game Native. Compatibility (the amount of games that boot at all) is likely a little worse, but trust in Gabe - Valve and their contractors are working on it and things are improving rapidly. 
 
@@ -210,6 +217,9 @@ See the [Pocknix Control docs](docs/pocknix-control.md) for the full tour.
 - **On Snapdragon 8 Gen 2 devices** (Retroid Pocket 6, AYN Odin 2 family), **charging during
   sleep can freeze the device mid-sleep**. Prefer charging while the device is powered on, or
   fully powered off.
+- **Gyro does not work yet.** The motion sensors are not wired up, so games and emulators
+  that use gyro aim or tilt controls will not see any input. Getting them working is on the
+  list.
 - **MangoHud incurs a slight performance penalty.** It is fine for dialing in settings, but
   turn it off during real gameplay. I consider this a feature, not a bug. Instead of staring
   at performance metrics (we're all guilty), just enjoy your games! :)
