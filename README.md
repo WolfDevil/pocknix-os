@@ -144,8 +144,8 @@ setting, so repeat it for each title you install.
 If a game misbehaves, try the other tools:
 
 - **Proton-CachyOS 11 (ARM64)**, also shipped with pocknix, so it is in the same dropdown.
-- **Proton 11 ARM**, Valve's own build: it is more bleeding edge and may offer better
-  compatibility for some titles. Unlike the other two, it needs to be downloaded manually.
+- **Proton 11 ARM**, Valve's own build: at times, it can be more bleeding edge and may offer
+  better compatibility for some titles. Unlike the other two, it needs to be downloaded manually.
   Search for **"Proton 11 ARM"** in your Steam **Library**, download and install it, then
   force it per game the same way as the other two.
 - **The normal (x86) Protons** should "just work" too, but performance will be worse than
