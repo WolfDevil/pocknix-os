@@ -285,8 +285,9 @@ EOF
         >/dev/null 2>&1 || true
   # audio server (PipeWire) as per-user services — start in the autologin/session user.
   # WirePlumber applies the device UCM (shipped by the device BSP) automatically.
-  # pocknix-proton-prep: watches for Steam downloading/updating Proton 11 ARM and keeps the compat
-  # tool usable, so the first download needs no reboot (pocknix-steam also runs it at game start).
+  # pocknix-proton-prep: watches for Steam downloading/updating the ARM Protons and keeps their
+  # compat tools usable, so the first download needs no reboot (pocknix-steam also runs it at
+  # game start).
   chroot "${root}" systemctl --global enable pipewire.socket pipewire-pulse.socket wireplumber.service \
         pocknix-proton-prep.service \
         >/dev/null 2>&1 || true
