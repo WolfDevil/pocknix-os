@@ -2,11 +2,12 @@
 # pocknix-desktop-rotate — apply the RP6 panel rotation + scale to the live Plasma Mobile session.
 #
 # WHY this exists: the RP6 DSI panel is physically portrait (1080x1920) mounted rotated, so an
-# un-transformed Plasma session comes up sideways. gamescope side-steps this with a rotation SHADER
-# (--use-rotation-shader); kwin_wayland instead drives DRM directly and needs a REAL output
-# transform. kscreen-doctor can set that transform, and kwin PERSISTS it (Plasma 6 stores output
-# config in ~/.config/kwinoutputconfig.json, not the old ~/.local/share/kscreen dir), so this only
-# has to run once per fresh home — but it's safe to run every session (idempotent).
+# un-transformed Plasma session comes up sideways. gamescope side-steps this by rotating in its
+# composite pass (--force-composition-rotation); kwin_wayland instead drives DRM directly and
+# needs a REAL output transform. kscreen-doctor can set that transform, and kwin PERSISTS it
+# (Plasma 6 stores output config in ~/.config/kwinoutputconfig.json, not the old
+# ~/.local/share/kscreen dir), so this only has to run once per fresh home — but it's safe to
+# run every session (idempotent).
 #
 # In practice on the RP6 the rotation half is a no-op belt-and-braces: kwin honors the DRM
 # panel-orientation hint natively. The SCALE half is the load-bearing part — kwin's auto default

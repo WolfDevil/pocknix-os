@@ -1,46 +1,26 @@
-# gamescope (pocknix) — ROCKNIX-patched build for the RP6's rotated msm/DPU panel.
+# gamescope (pocknix) — patched build for rotated msm/DPU panels.
 #
-# Vanilla gamescope (incl. ALARM's 3.16.24) CANNOT drive the RP6 panel: the panel is
-# mounted rotated (DTS rotation=<270>), so gamescope tries a DRM *plane* rotation that
-# the msm DPU rejects -> "Failed to prepare 1-layer flip (Invalid argument)" forever
-# (upstream issue #1883/#819). We rotate in a compute SHADER instead — ROCKNIX's 0005
-# rotates the final composite in a separate pass (--use-rotation-shader), which the msm
-# DPU accepts. This is now the ROCKNIX patch set verbatim (same numbering).
+# Vanilla gamescope (incl. ALARM's) CANNOT drive these panels: they are mounted rotated
+# (DTS rotation=<270>), and gamescope tries a DRM *plane* rotation that the msm DPU
+# rejects -> "Failed to prepare 1-layer flip (Invalid argument)" forever (upstream
+# issue #1883/#819). Rotation is done in the COMPOSITOR instead: PR #2228 (0007+0008)
+# folds the rotation into the composite pass, autodetected or forced via
+# --force-composition-rotation (pocknix-steam passes it; wants logical LANDSCAPE -W/-H).
+# Replaces ROCKNIX's 0005 rotation-shader (in git history at the 4286887-pinned revision).
 #
-# BASE BUMP fe78bc6 -> 4286887 (Valve master, 2026-06-12, "Bump wlroots to v0.19"): picks up
-# upstream's present/FIFO frame-callback rework to address games pacing at 60fps on the 120Hz
-# panel (FEX + rotated composite pushed marginal frames past the 8.3ms vblank boundary -> hard
-# 60). See memory dpu-ctl-start-instability. NB the fix is not guaranteed to be in these commits
-# — the on-device strace(msgrcv) instrument decides.
-#
-# Dropped vs our fe78bc6 set:
-#  - 0007 composite-rotation (PR #2228): the fps investigation A/B'd it as fps-neutral vs 0005
-#    (only a GPU-load nicety with the overlay up). Back to ROCKNIX's 0005 rotation-shader.
-#
-# 0008 (revert of upstream e572411d) is NOT carried on this base. DO NOT re-add it without
-# re-measuring first — I added it on a false premise (2026-07-13) and it made things worse:
-#  - It was NOT the perf regression. The ROCKNIX gap was already back BEFORE 0008 was ever
-#    installed (pacman.log: gamescope -1 was live the whole time), so a missing 0008 cannot have
-#    caused it.
-#  - It does not rebase cleanly in BEHAVIOUR onto 4286887. Its hunk-2 early-returns out of
-#    mangoapp_output_update(), which on THIS base also skips `wlserver_app_presented()` — a call
-#    that did not exist on fe78bc6. That silently drops the game's presentation feedback and is a
-#    plausible cause of the frame-pacing spikiness seen with it installed.
-#  - Its guard is `if (!g_bCurrentBasePlaneIsFifo) return;` and IsPerfOverlayFIFO() is
-#    `fifo || is_steam`, so it only suppresses the nudge for NON-FIFO content anyway.
-#  - The overlay tax it targeted is NOT occurring here: measured on-device, gamescope runs exactly
-#    ONE composite per present (ring-0 submits == present rate) on both the Steam UI and in-game.
-# NB upstream's `cv_mangoapp_use_output_timing` convar is NOT a substitute either — it only gates
-# `wlserver_app_presented()`, while the `mangoapp_update()` nudge fires unconditionally.
-# If the overlay tax ever genuinely returns (tell: ring-0 composites >> present rate), rebase 0008
-# properly for this base rather than restoring the old patch verbatim.
+# The mangoapp frametime revert (upstream e572411d) is deliberately NOT carried: on
+# current bases its early-return also skips wlserver_app_presented(), dropping the
+# game's presentation feedback. Re-add only if ring-0 composites >> present rate, as a
+# proper rebase. cv_mangoapp_use_output_timing is NOT a substitute.
 #
 # epoch=1 so this is preferred over ALARM's [extra] gamescope when both are visible.
+# pkgver: the segment after "rocknix." must vercmp HIGHER on every bump — commit date
+# then short sha (a bare sha segment is non-monotonic: 4286887 > 6644cc9 numerically).
 pkgname=gamescope
 epoch=1
-pkgver=3.16.0.rocknix.4286887
-pkgrel=3
-_commit=428688779e481681ddf6e2ea346987889527a0b7
+pkgver=3.16.0.rocknix.20260802.6644cc9
+pkgrel=1
+_commit=6644cc9a07d8ba937003deae8bd7c28a490d0c64
 # Grant CAP_SYS_NICE to the installed binary (realtime scheduling) — see gamescope.install.
 install=gamescope.install
 pkgdesc="SteamOS session compositing WM — patched (rotation-shader, for msm/rotated panels)"
@@ -63,23 +43,22 @@ makedepends=('git' 'meson' 'ninja' 'cmake' 'pkgconf' 'glslang' 'vulkan-headers'
 source=("gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=${_commit}"
         '0001-WaylandBackend-wire-up-wl_touch-implementation.patch'
         '0004-DRMBackend-Add-GAMESCOPE_FAKE_OUTPUT_MM-env-to-set-c.patch'
-        '0005-feature-add-rotation-shader-for-rotating-output.patch'
-        '0006-steamcompmgr-fix-gamepad-cursor-sprite-frozen-via-XTest.patch')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '0006-steamcompmgr-fix-gamepad-cursor-sprite-frozen-via-XTest.patch'
+        '0007-Add-composited-output-rotation-for-displays-that-can.patch'
+        '0008-steamcompmgr-classify-the-interactive-overlay-by-out.patch')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 prepare() {
   cd gamescope
   # subprojects (wlroots, libliftoff, etc.) are git submodules at this commit.
   git submodule update --init --recursive
-  # ROCKNIX patch stack, verbatim (same order/numbering as their package.mk).
+  # 0001/0004/0006 = ROCKNIX stack (their numbering); 0007/0008 = upstream PR #2228
+  # composite rotation (see header; launch flags live in packages/pocknix-steam).
   patch -p1 < "${srcdir}/0001-WaylandBackend-wire-up-wl_touch-implementation.patch"
   patch -p1 < "${srcdir}/0004-DRMBackend-Add-GAMESCOPE_FAKE_OUTPUT_MM-env-to-set-c.patch"
-  # 0005 rotation-shader: rotate the final composite in a compute pass (--use-rotation-shader),
-  # the RP6's only working rotation path (msm rejects DRM plane rotation). Launched with
-  # -W 1080 -H 1920 --force-orientation left (native portrait; the shader swaps to landscape) —
-  # see packages/pocknix-steam/pocknix-steam and device.conf.
-  patch -p1 < "${srcdir}/0005-feature-add-rotation-shader-for-rotating-output.patch"
   patch -p1 < "${srcdir}/0006-steamcompmgr-fix-gamepad-cursor-sprite-frozen-via-XTest.patch"
+  patch -p1 < "${srcdir}/0007-Add-composited-output-rotation-for-displays-that-can.patch"
+  patch -p1 < "${srcdir}/0008-steamcompmgr-classify-the-interactive-overlay-by-out.patch"
 }
 
 build() {
