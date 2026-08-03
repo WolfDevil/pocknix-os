@@ -13,8 +13,8 @@ pocknix-steamos-shim   # steamos-update/branch/BIOS stubs so the Deck UI OOBE do
 pocknix-sdcard-automount
 mangohud               # patched (Adreno sysfs reader + mangoapp pacing)
 pocknix-steam          # the Steam session (launcher + installer)
-proton-cachyos         # CachyOS ARM64 Proton as a system compat tool (constant Steam entry, updates via pacman)
-proton-ge              # GE-Proton ARM64, second compat tool (x86 builds of both stay repo-only)
+# proton-cachyos / proton-ge moved to the DEVICE metapackages: sm8550 ships stock,
+# sm8250 ships the -dxvk2 variants (a6xx lacks 8-bit storage -> DXVK 3 rejects the GPU).
 fex-emu                # x86 emulator (thunks)
 fex-rootfs             # ~1.1 GB Arch x86 squashfs the games' libraries resolve from
 pocknix-desktop        # Plasma Mobile session + game<->desktop switch

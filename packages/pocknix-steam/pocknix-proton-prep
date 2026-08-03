@@ -30,8 +30,15 @@ RES=/usr/share/pocknix-steam
 # the common dir doubles as the display name. Add a line when Valve ships another ARM build.
 ARM_PROTONS=(
   "Proton 11.0 (ARM64)|proton-11-arm64|proton_11_arm64"
-  "Proton Experimental (ARM64)|proton-experimental-arm64|proton_experimental_arm64"
 )
+# Experimental ships DXVK 3, which rejects GPUs without storageBuffer8BitAccess (a6xx: every
+# launch fails "No adapters found") — don't offer it on boards flagged POCKNIX_GPU_DXVK3=no.
+for _dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
+  [ -r "${_dc}" ] && . "${_dc}"
+done
+if [ "${POCKNIX_GPU_DXVK3:-yes}" != "no" ]; then
+  ARM_PROTONS+=("Proton Experimental (ARM64)|proton-experimental-arm64|proton_experimental_arm64")
+fi
 
 # Generated rather than shipped: only the internal + display names vary between builds.
 write_compat_vdf() { # <dest> <internal name> <display name>

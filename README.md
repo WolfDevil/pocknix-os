@@ -136,21 +136,42 @@ including how to uninstall and restore the space to Android.
 
 ## How to play games
 
+### Picking a Proton
+
 Download a game, then **set a compatibility tool for it**: open the game's
 **Properties → Compatibility**, tick **"Force the use of a specific Steam Play compatibility
-tool"** and pick **Proton-GE 11 (ARM64)**, which ships with pocknix. This is a per game
-setting, so repeat it for each title you install.
+tool"** and pick **Proton-GE 11 (ARM64)** or **Proton-CachyOS 11 (ARM64)** — both ship with
+pocknix and either is a good default; if a game misbehaves or runs poorly on one, try the
+other. This is a per game setting, so repeat it for each title you install.
 
-If a game misbehaves, try the other tools:
+If a game misbehaves on both, try the other tools:
 
-- **Proton-CachyOS 11 (ARM64)**, also shipped with pocknix, so it is in the same dropdown.
 - **Proton 11 ARM**, Valve's own build: at times, it can be more bleeding edge and may offer
   better compatibility for some titles. Unlike the other two, it needs to be downloaded manually.
   Search for **"Proton 11 ARM"** in your Steam **Library**, download and install it, then
   force it per game the same way as the other two.
+- **Proton Experimental (ARM64)**, Valve's rolling preview build: the newest fixes land here
+  first, so it is worth a try when a game fails on everything else — but being a moving
+  target, a Steam update can also change how it behaves. Download it manually like Proton 11
+  ARM (search for **"Proton Experimental ARM64"** in your **Library**), then force it per
+  game. Not available on the Retroid Pocket 5 / Flip 2 (see below).
 - **The normal (x86) Protons** should "just work" too, but performance will be worse than
   the native ARM builds. Only reach for one when you cannot get a game to boot at all on an
   ARM Proton.
+
+### On the Retroid Pocket 5 and Flip 2
+
+The advice above applies unchanged, with one thing to know: the Snapdragon 865's GPU
+driver does not yet support newer Proton builds. Recent DXVK (the DirectX layer inside
+Proton) requires a GPU feature these devices do not provide yet, so any recent stock
+GE/CachyOS release or Valve's **Proton Experimental (ARM64)** fails to start DirectX
+games with "No adapters found". The GE and CachyOS builds pocknix ships on these devices
+are current but carry a compatible DXVK on purpose, so they work — as do Valve's
+**Proton 11 ARM** and the x86 Protons. Just avoid sideloading newer Proton builds and
+expect Proton Experimental to stay broken here for now. Note that **Proton 11 ARM may
+eventually stop working too**: when Valve updates it to the newer DXVK already found in
+the Experimental builds, it will hit the same wall — the pocknix-shipped GE/CachyOS
+tools and the x86 Protons will keep working regardless.
 
 x86 games run through FEX (x86-on-ARM translation) plus Proton, so many Windows titles "just work". Generally, performance should match or exceed PC emulation under Android through apps like Gamehub/Game Native. Compatibility (the amount of games that boot at all) is likely a little worse, but trust in Gabe - Valve and their contractors are working on it and things are improving rapidly. 
 
