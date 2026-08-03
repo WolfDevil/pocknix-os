@@ -6,12 +6,10 @@
 #    dead weight in the image and build-time deps (llvm, rust, clang) we don't want.
 #  - CPU tuning: built with ROCKNIX's exact SM8550 flags (cortex-x3/armv9-a, see build()) like
 #    our gamescope/mangohud, instead of ALARM's generic armv8-a baseline.
-#  - Version: 26.1.5 (latest stable) — a DELIBERATE divergence from ROCKNIX's 25.1.5 pin
-#    (2026-07-08). The original pin was bring-up-era parity ("match what the RP6 is validated
-#    against"); it was invalidated on-device: 25.1.5's Turnip GPU-faults under Eden/Switch
-#    (adreno CP opcode 0x0 -> Vulkan device loss), while Turnip 26.1.4 runs it flawlessly —
-#    Switch emulation is the one workload ROCKNIX never validated (they don't ship it). ALARM
-#    ships 26.1.4 as its standard mesa too. ROCKNIX still ships no mesa patches; stock source.
+#  - Version: 26.1.6 = ROCKNIX's nightly pin (projects/ROCKNIX/packages/graphics/mesa; their
+#    base packages/graphics/mesa still reads 25.1.5 but is not what nightlies ship). 25.1.x is
+#    unusable here regardless: its Turnip GPU-faults under Eden/Switch (CP opcode 0x0 ->
+#    device loss). Stock source, no patches, matching them.
 #
 # Driver set mirrors ROCKNIX SM8550 (options: GRAPHIC_DRIVERS=freedreno -> config/graphic):
 #   gallium = freedreno + zink + softpipe (their default fallback), vulkan = freedreno (turnip).
@@ -25,9 +23,11 @@
 pkgbase=mesa
 pkgname=(mesa vulkan-freedreno)
 epoch=2
-pkgver=26.1.5
-pkgrel=3
-pkgdesc="Mesa trimmed for the RP6/SM8550: freedreno GL + turnip Vulkan, cortex-x3 tuned (26.1.5)"
+pkgver=26.1.6
+# only differs from pkgver for RCs (upstream tarball keeps the hyphen makepkg forbids)
+_srcver=${pkgver}
+pkgrel=1
+pkgdesc="Mesa trimmed for the RP6/SM8550: freedreno GL + turnip Vulkan, cortex-x3 tuned (${_srcver})"
 arch=('aarch64')
 url="https://www.mesa3d.org/"
 license=("MIT AND BSD-3-Clause AND SGI-B-2.0")
@@ -47,12 +47,12 @@ options=(!lto)
 # nothing, so it was dropped to keep host AND fex-rootfs x86 turnip on identical stock
 # 26.1.5 source (see pocknix-notes x86-proton plan; the patch + x86 build recipe live in
 # git history / notes tools/ if a bindless miscompile ever actually surfaces).
-source=("https://archive.mesa3d.org/mesa-${pkgver}.tar.xz")
+source=("https://archive.mesa3d.org/mesa-${_srcver}.tar.xz")
 # sha256 computed from the upstream archive.mesa3d.org tarball
-sha256sums=('79e421c7ce18cd9e790b8375920325779f10798630bf30e0b22f1a21c8617122')
+sha256sums=('5296b88a0f1e012e2cb9ada150a2bbadf728ca81e5a4fb2ab43c83a4d2158606')
 
 prepare() {
-  cd "mesa-${pkgver}"
+  cd "mesa-${_srcver}"
   # (the 25.1.5-era c11-threads C23 patch is upstream in 26.x — dropped)
   # Include the package release in the version string so Chromium/CEF (steamwebhelper!)
   # invalidates its GPU cache across our rebuilds — same trick as Arch's mesa.
@@ -76,7 +76,7 @@ build() {
   # the llvm-libs runtime dep entirely. No VA/VDPAU/XA (no such hardware paths on msm), no
   # rusticl/OpenCL, no vulkan layers (mangohud is our overlay; device-select is pointless with
   # one GPU). freedreno-kmds=msm only (no virtio guests here).
-  meson setup build "mesa-${pkgver}" --prefix=/usr --buildtype=plain \
+  meson setup build "mesa-${_srcver}" --prefix=/usr --buildtype=plain \
     -Db_ndebug=true \
     -Dplatforms=x11,wayland \
     -Dglx=dri \
@@ -141,7 +141,7 @@ package_mesa() {
     ln -sr usr/lib/libGLX_{mesa,indirect}.so.0
   )
 
-  install -Dm644 "mesa-${pkgver}/docs/license.rst" -t "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -Dm644 "mesa-${_srcver}/docs/license.rst" -t "${pkgdir}/usr/share/licenses/${pkgname}"
 }
 
 package_vulkan-freedreno() {
@@ -154,5 +154,5 @@ package_vulkan-freedreno() {
 
   mv "${srcdir}/vkfdreno"/* "${pkgdir}"
 
-  install -Dm644 "mesa-${pkgver}/docs/license.rst" -t "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -Dm644 "mesa-${_srcver}/docs/license.rst" -t "${pkgdir}/usr/share/licenses/${pkgname}"
 }
