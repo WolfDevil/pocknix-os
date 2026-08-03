@@ -39,6 +39,10 @@ source "${POCKNIX_ROOT}/config/tuning/${SOC}.conf"
 # Per-SoC pacman repo: tuned packages (mesa etc.) share pkgnames across SoCs
 # with different binaries, so each SoC gets its own localrepo/published tree.
 : "${LOCALREPO_DIR:=${BUILD_DIR}/localrepo/${SOC}}"
+# Publish staging area (stage-repo.sh): a mirror of the LIVE repo with only the
+# intended packages swapped in — publish-repo.sh publishes THIS, never the
+# shared localrepo (which parallel sessions fill with unvalidated builds).
+: "${STAGE_DIR:=${BUILD_DIR}/stage/${SOC}}"
 # Per-SoC kernel + image outputs: with one family per SoC, a shared build/kernel
 # and build/image/KERNEL meant "whatever family built last" — switching families
 # forced a full kernel rebuild just to regenerate an unchanged image, and the
