@@ -7,7 +7,9 @@ Qualcomm SoC.
 Questions, bug reports, or just want to hang out? Join the [pocknix Discord](https://discord.gg/vcDtuNfmC).
 
 > [!WARNING]
-> pocknix-os is **experimental** software. Install and use it at your own risk. Also note that
+> pocknix-os is **experimental** software. Install and use it at your own risk. 
+
+> [!WARNING]
 > **SSH is enabled by default** and the default password (`pocknix`) is publicly known, so it is
 > strongly recommended you change it: run `passwd` (and `sudo passwd root`) after first boot.
 
@@ -172,8 +174,6 @@ expect Proton Experimental to stay broken here for now. Note that **Proton 11 AR
 eventually stop working too**: when Valve updates it to the newer DXVK already found in
 the Experimental builds, it will hit the same wall — the pocknix-shipped GE/CachyOS
 tools and the x86 Protons will keep working regardless.
-
-x86 games run through FEX (x86-on-ARM translation) plus Proton, so many Windows titles "just work". Generally, performance should match or exceed PC emulation under Android through apps like Gamehub/Game Native. Compatibility (the amount of games that boot at all) is likely a little worse, but trust in Gabe - Valve and their contractors are working on it and things are improving rapidly. 
 
 ## Emulation
 
