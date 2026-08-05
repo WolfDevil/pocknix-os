@@ -37,3 +37,16 @@ export function registerForCompatTool(appid: string, onChange: (tool: string) =>
 export function setCompatTool(appid: string, tool: string): void {
   window.SteamClient?.Apps?.SpecifyCompatTool?.(Number(appid), tool);
 }
+
+/** Resolve an imported Proton pick against this device's tools. Unknown ARM-named tools
+ *  fall back to the cachy ARM Proton; unknown x86-named ones to a Proton 11. */
+export function resolveCompatTool(wanted: string, tools: CompatTool[]): { tool: string; fallback: boolean } {
+  if (!wanted) return { tool: "", fallback: false };
+  if (tools.some((tool) => tool.name === wanted)) return { tool: wanted, fallback: false };
+  const haystack = (tool: CompatTool) => `${tool.name} ${tool.label}`;
+  const isArm = /arm/i.test(wanted);
+  const fallback = isArm
+    ? tools.find((tool) => /cachy/i.test(haystack(tool)) && !/x86/i.test(haystack(tool)))
+    : tools.find((tool) => /(^|\D)11(\D|$)/.test(haystack(tool)) && !/arm|cachy/i.test(haystack(tool)));
+  return { tool: fallback?.name || "", fallback: true };
+}
