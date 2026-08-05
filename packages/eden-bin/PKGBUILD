@@ -5,24 +5,31 @@
 # Snapdragon 8-Gen-2/Elite commitment, aarch64-native Linux AppImages, and a clang-PGO variant.
 # Citron can be added later as an alternate (its forge API was unreachable when this was written).
 #
-# IMPORTANT: Eden's GitHub mirror was DMCA'd (Feb 2026 Nintendo wave) — releases come from their
-# self-hosted Forgejo, git.eden-emu.dev, which redirects assets to stable.eden-emu.dev. URL
-# verified 200 on 2026-07-05. If the host moves again, check their site for the new forge.
+# IMPORTANT: Eden's GitHub mirror was DMCA'd (Feb 2026 Nintendo wave) — builds come from their
+# self-hosted Forgejo, git.eden-emu.dev. If the host moves again, check their site for the new forge.
+#
+# We track the NIGHTLY channel (eden-ci/nightly on that forge, assets on nightly.eden-emu.dev):
+# tags are months apart while the Switch-on-Adreno work lands continuously. Nightly tags are
+# `v<epoch>.<shortsha>` and the epoch is NOT derivable from the sha, so _tag pins it separately.
 #
 # Needs the user's own prod.keys (+ firmware) — see ROMS-README.txt (~/ROMs/bios or the path Eden
 # names on first run).
 pkgname=eden-bin
-pkgver=0.2.1
-pkgrel=2
-pkgdesc="Eden — Nintendo Switch emulator, aarch64 clang-PGO AppImage (vendored)"
+_nightly=20260804
+_gitsha=ba9130fbf9
+_tag=v1785871188.${_gitsha}
+pkgver=0.2.1.nightly${_nightly}
+pkgrel=1
+pkgdesc="Eden — Nintendo Switch emulator, aarch64 clang-PGO AppImage (vendored, official nightly)"
 arch=('aarch64')
 url="https://eden-emu.dev"
 license=('GPL3')
 depends=('fuse2')
 options=('!strip')
-source=("Eden-${pkgver}.AppImage::https://git.eden-emu.dev/eden-emu/eden/releases/download/v${pkgver}/Eden-Linux-v${pkgver}-aarch64-clang-pgo.AppImage"
+source=("Eden-${pkgver}.AppImage::https://nightly.eden-emu.dev/${_tag}/Eden-Linux-${_gitsha}-aarch64-clang-pgo.AppImage"
         'pocknix-eden.desktop')
-sha256sums=('SKIP' 'SKIP')
+sha256sums=('1e87890ab7acd0310e77dd188649f1d2a0a66ca23929bb700a6b04cb9be0a4b5'
+            'SKIP')
 noextract=("Eden-${pkgver}.AppImage")
 
 prepare() {

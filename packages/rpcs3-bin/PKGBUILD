@@ -8,19 +8,20 @@
 # Pinned to a known build from RPCS3/rpcs3-binaries-linux-arm64 (their official arm64 release
 # repo). Needs PS3 firmware (PS3UPDAT.PUP) installed via the GUI once — see ROMS-README.
 pkgname=rpcs3-bin
-pkgver=0.0.41.19559
-pkgrel=2
+pkgver=0.0.42.19699
+pkgrel=1
 pkgdesc="RPCS3 — PS3 emulator, official aarch64 AppImage (vendored)"
 arch=('aarch64')
 url="https://rpcs3.net"
 license=('GPL2')
 depends=('fuse2')
 options=('!strip')
-_build=build-d87cf99b655e1a3c85fa5913b2b591dec18a473a
-_asset=rpcs3-v0.0.41-19559-d87cf99b_linux_aarch64.AppImage
+_build=build-3d587726a23f514be0e7c3ac43e2db0cf2fe931a
+_asset=rpcs3-v0.0.42-19699-3d587726_linux_aarch64.AppImage
 source=("rpcs3-${pkgver}.AppImage::https://github.com/RPCS3/rpcs3-binaries-linux-arm64/releases/download/${_build}/${_asset}"
         'pocknix-rpcs3.desktop')
-sha256sums=('SKIP' 'SKIP')
+sha256sums=('fee9e8d43878a7d7ae90652049e8f773ec1efe938c52e20128f0477f5f04c38e'
+            'SKIP')
 noextract=("rpcs3-${pkgver}.AppImage")
 
 prepare() {
