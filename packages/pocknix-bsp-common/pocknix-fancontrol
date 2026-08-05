@@ -53,7 +53,9 @@ CURVE_PERFORMANCE="80000:255 75000:204 70000:153 65000:119 60000:102 55000:77 50
 # game session (the wrapper execs into Proton), so a dead pid means no override — the pick
 # reverts on any kind of game exit with no cleanup step. "-" = that field not overridden.
 effective_mode() {
-  if read -r pid fan _ < "${GAME_MODE_FILE}" 2>/dev/null; then
+  # 2>/dev/null BEFORE the < so the open failure (no file in idle) is suppressed too —
+  # < file 2>/dev/null doesn't, since the < redirect is evaluated before stderr is muted.
+  if read -r pid fan _ 2>/dev/null < "${GAME_MODE_FILE}"; then
     if [ -n "${pid}" ] && [ "${fan}" != "-" ] && [ -d "/proc/${pid}" ]; then
       printf '%s\n' "${fan}"
       return
