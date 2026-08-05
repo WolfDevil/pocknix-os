@@ -20,6 +20,13 @@ set -u
 MODE_FILE=/var/lib/pocknix/fan-mode
 GAME_MODE_FILE=/run/pocknix/game-mode
 
+# Hysteresis in millidegC (5000 = 5C). On cooldown the fan keeps its current (higher) step
+# until temp falls HYST below the threshold that step was chosen at; on warmup it reacts at
+# the exact threshold. Symmetric behavior, biased toward cooling — safer than the reverse.
+# Wide enough to absorb the idle-vs-active thermal gap near the floor (e.g. Steam menu at
+# ~50-51C otherwise cycles start/stop every tick); tune down if a step holds too long.
+HYST=5000
+
 # Fan PWM (hwmon pwm1) — ROCKNIX 020-fan_control.
 FAN_PWM="$(ls /sys/class/hwmon/hwmon*/pwm1 2>/dev/null | head -1)"
 [ -n "${FAN_PWM}" ] || { echo "pocknix-fancontrol: no hwmon pwm1 fan found, exiting"; exit 0; }
@@ -68,17 +75,31 @@ curve_pairs() {
 trap '[ -e "${FAN_EN}" ] && echo 0 > "${FAN_EN}" 2>/dev/null; exit 0' INT TERM
 
 LAST=""
+LAST_TH=0        # threshold the current step was chosen at; cooldown needs TEMP < TH - HYST.
+LAST_MODE=""     # effective_mode at the current step; a mode change bypasses hysteresis so a
+                 # per-game override ending (e.g. performance -> quiet) doesn't hold a high PWM.
 while :; do
+  MODE="$(effective_mode)"
   PAIRS="$(curve_pairs)"
   TEMP="$(awk '{s+=$1;n++} END{printf "%d", (n? s/n : 0)}' ${SENSORS} 2>/dev/null)"
-  SPEED=0
+  SPEED=0; TH=0
   for pair in ${PAIRS}; do
     th="${pair%%:*}"
-    [ "${TEMP}" -gt "${th}" ] && { SPEED="${pair#*:}"; break; }
+    if [ "${TEMP}" -gt "${th}" ]; then SPEED="${pair#*:}"; TH="${th}"; break; fi
   done
+  # Hysteresis: only honor a cooldown (SPEED < LAST) once temp has fallen HYST below the
+  # threshold LAST was picked at — but only if the mode hasn't changed since. A mode switch
+  # (warm or cool) always applies fresh, so e.g. dropping a per-game performance override
+  # immediately lowers the fan instead of holding the high step until cooldown completes.
+  if [ "${MODE}" = "${LAST_MODE}" ] && [ "${SPEED}" -lt "${LAST}" ] && [ "${TEMP}" -ge $((LAST_TH - HYST)) ]; then
+    SPEED="${LAST}"
+    TH="${LAST_TH}"
+  fi
   if [ "${SPEED}" != "${LAST}" ]; then
     echo "${SPEED}" > "${FAN_PWM}" 2>/dev/null
     LAST="${SPEED}"
+    LAST_TH="${TH}"
   fi
+  LAST_MODE="${MODE}"
   sleep 3
 done
