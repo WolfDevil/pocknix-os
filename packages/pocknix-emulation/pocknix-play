@@ -94,6 +94,8 @@ case "${system}" in
     _pin="taskset -c ${_big_cores}"
     run_appimage armsx2/ARMSX2.AppImage -batch -fullscreen -- "${rom}" ;;
   ps3)
+    # Big-core pin — same trap as ps2 above (PPU/SPU threads are the heaviest in the set).
+    _pin="taskset -c ${_big_cores}"
     run_appimage rpcs3/rpcs3.AppImage --no-gui "${rom}" ;;
   switch)
     # Big-core pin (same as ps2: Eden's emulated-core thread landed on a little A510 unpinned,
@@ -103,6 +105,8 @@ case "${system}" in
     _pin="taskset -c ${_big_cores}"
     run_appimage eden/Eden.AppImage -f -g "${rom}" ;;                      # yuzu-lineage flags
   xbox)
+    # Big-core pin — same trap as ps2 above.
+    _pin="taskset -c ${_big_cores}"
     run_appimage xemu/xemu.AppImage -full-screen -dvd_path "${rom}" ;;
   n3ds|3ds)
     command -v azahar >/dev/null 2>&1 || { echo "pocknix-play: azahar not installed" >&2; exit 1; }
@@ -112,8 +116,9 @@ case "${system}" in
   wiiu)
     # Native aarch64 Cemu (source build, packages/cemu — upstream grew an ARM64 recompiler;
     # the old cemu-x86-bin/FEX route is retired).
+    # Big-core pin — same trap as ps2 above.
     command -v Cemu >/dev/null 2>&1 || { echo "pocknix-play: cemu not installed" >&2; exit 1; }
-    exec Cemu -f -g "${rom}" ;;
+    exec taskset -c "${_big_cores}" Cemu -f -g "${rom}" ;;
 
   *)
     echo "pocknix-play: unknown system '${system}' (see /usr/bin/pocknix-play for the mapping)" >&2
