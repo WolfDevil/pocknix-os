@@ -4,14 +4,26 @@ from pathlib import Path
 
 from .system import atomically_write
 
-# Stick RGB rings expose as multicolor LED-class devices: /sys/class/leds/rgb:l1..l4
-# and rgb:r1..r4. sysfs resets on reboot, so the chosen state is persisted and
-# re-applied from Plugin._main on load.
+# Stick RGB rings expose as multicolor LED-class devices. sysfs resets on reboot,
+# so the chosen state is persisted and re-applied from Plugin._main on load.
+# RP6: /sys/class/leds/rgb:l1..l4 and rgb:r1..l4 (4 ring segments per stick).
+# Odin 2/Mini/Portal: /sys/class/leds/left-joystick and right-joystick (1 node per
+# stick, pwm-leds-multicolor). Same multi_intensity/brightness ABI in both cases.
 LED_CONFIG = Path("/etc/pocknix/led.json")
 LED_GLOB = Path("/sys/class/leds")
 
-LEFT_LEDS = sorted(LED_GLOB.glob("rgb:l[0-9]*"))
-RIGHT_LEDS = sorted(LED_GLOB.glob("rgb:r[0-9]*"))
+
+def _segments(side):
+    # RP6 groups each ring segment under rgb:<l|r><n>; Odin names the whole stick.
+    segs = sorted(LED_GLOB.glob(f"rgb:{side[0]}[0-9]*"))
+    if segs:
+        return segs
+    node = LED_GLOB / f"{side}-joystick"
+    return [node] if node.is_dir() else []
+
+
+LEFT_LEDS = _segments("left")
+RIGHT_LEDS = _segments("right")
 AVAILABLE = bool(LEFT_LEDS or RIGHT_LEDS)
 
 DEFAULTS = {
