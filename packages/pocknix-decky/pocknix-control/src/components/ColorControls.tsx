@@ -1,31 +1,35 @@
 import { gamepadSliderClasses, PanelSectionRow, SliderField } from "@decky/ui";
 import { useEffect, useRef, useState } from "react";
 
-// SliderField has only onChange (no onChangeEnd), so commits are debounced. The
-// pending value lives in a ref so the unmount flush always sees the latest edit, not
-// a value captured when the component first mounted.
+// SliderField has only onChange, so commits are debounced. The pending value lives in
+// a ref so the unmount flush always sees the latest edit, not a stale first-render one.
 const COMMIT_DELAY = 350;
 
 interface ColorControlsProps {
   zone: string;
   hsv: [number, number, number];
-  onCommit: (h: number, s: number, v: number) => void;
+  brightness: number;
+  onCommit: (hsv: [number, number, number], brightness: number) => void;
 }
 
-export function ColorControls({ zone, hsv, onCommit }: ColorControlsProps) {
-  const [hue, saturation, value] = hsv;
-  const [local, setLocal] = useState<[number, number, number]>(hsv);
-  const pending = useRef<[number, number, number] | null>(null);
+export function ColorControls({ zone, hsv, brightness, onCommit }: ColorControlsProps) {
+  const [hue, saturation] = hsv;
+  const [localH, setLocalH] = useState(hsv[0]);
+  const [localS, setLocalS] = useState(hsv[1]);
+  const [localBri, setLocalBri] = useState(brightness);
+  const pending = useRef<{ hsv: [number, number, number]; bri: number } | null>(null);
   const onCommitRef = useRef(onCommit);
   onCommitRef.current = onCommit;
 
-  useEffect(() => {
-    setLocal(hsv);
-  }, [hue, saturation, value]);
+  useEffect(() => { setLocalH(hsv[0]); }, [hue]);
+  useEffect(() => { setLocalS(hsv[1]); }, [saturation]);
+  useEffect(() => { setLocalBri(brightness); }, [brightness]);
 
-  const schedule = (next: [number, number, number]) => {
-    setLocal(next);
-    pending.current = next;
+  const schedule = (h: number, s: number, bri: number) => {
+    setLocalH(h);
+    setLocalS(s);
+    setLocalBri(bri);
+    pending.current = { hsv: [h, s, 100], bri };
   };
 
   useEffect(() => {
@@ -33,34 +37,33 @@ export function ColorControls({ zone, hsv, onCommit }: ColorControlsProps) {
     const snapshot = pending.current;
     const timer = window.setTimeout(() => {
       pending.current = null;
-      onCommitRef.current(snapshot[0], snapshot[1], snapshot[2]);
+      onCommitRef.current(snapshot.hsv, snapshot.bri);
     }, COMMIT_DELAY);
     return () => window.clearTimeout(timer);
-  }, [local]);
+  }, [localH, localS, localBri]);
 
+  // QAM unmounts on close; flush any edit still in the debounce window.
   useEffect(
     () => () => {
       if (pending.current !== null) {
         const snapshot = pending.current;
         pending.current = null;
-        onCommitRef.current(snapshot[0], snapshot[1], snapshot[2]);
+        onCommitRef.current(snapshot.hsv, snapshot.bri);
       }
     },
     [],
   );
 
-  const setHue = (h: number) => schedule([h, local[1], local[2]]);
-  const setSaturation = (s: number) => schedule([local[0], s, local[2]]);
-  const setValue = (v: number) => schedule([local[0], local[1], v]);
-
-  const [h, s] = local;
+  const setHue = (h: number) => schedule(h, localS, localBri);
+  const setSaturation = (s: number) => schedule(localH, s, localBri);
+  const setBrightness = (b: number) => schedule(localH, localS, b);
 
   return (
     <>
       <PanelSectionRow>
         <SliderField
           label="Hue"
-          value={h}
+          value={localH}
           min={0}
           max={359}
           step={1}
@@ -75,7 +78,7 @@ export function ColorControls({ zone, hsv, onCommit }: ColorControlsProps) {
       <PanelSectionRow>
         <SliderField
           label="Saturation"
-          value={s}
+          value={localS}
           min={0}
           max={100}
           step={1}
@@ -90,16 +93,15 @@ export function ColorControls({ zone, hsv, onCommit }: ColorControlsProps) {
       <PanelSectionRow>
         <SliderField
           label="Brightness"
-          value={local[2]}
+          value={localBri}
           min={0}
-          max={100}
+          max={255}
           step={1}
           showValue
           validValues="range"
-          valueSuffix="%"
           bottomSeparator="thick"
           className={`pocknix-led-${zone}-v`}
-          onChange={setValue}
+          onChange={setBrightness}
         />
       </PanelSectionRow>
       <style>{`
@@ -111,12 +113,12 @@ export function ColorControls({ zone, hsv, onCommit }: ColorControlsProps) {
           --colored-toggles-main-color: #0000 !important;
         }
         .pocknix-led-${zone}-s .${gamepadSliderClasses.SliderTrack} {
-          background: linear-gradient(to right, hsl(0,0%,100%), hsl(${h},100%,50%)) !important;
+          background: linear-gradient(to right, hsl(0,0%,100%), hsl(${localH},100%,50%)) !important;
           --left-track-color: #0000 !important;
           --colored-toggles-main-color: #0000 !important;
         }
         .pocknix-led-${zone}-v .${gamepadSliderClasses.SliderTrack} {
-          background: linear-gradient(to right, hsl(0,0%,0%), hsl(${h},${s}%,50%)) !important;
+          background: linear-gradient(to right, hsl(0,0%,0%), hsl(${localH},${localS}%,50%)) !important;
           --left-track-color: #0000 !important;
           --colored-toggles-main-color: #0000 !important;
         }
