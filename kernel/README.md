@@ -36,10 +36,11 @@ commit instead — same build, but reproducible and clone-standalone.
 
 ## The full kernel = stock source + this patch stack + this config
 
-The kernel is **not** "stock Linux + a few device patches." It reproduces ROCKNIX's recipe
-exactly: stock kernel.org **`linux-7.0.11`** (pinned in `config/pocknix.conf`, the version
-ROCKNIX `next` currently uses for SM8550) with the full ROCKNIX patch stack applied **in
-order**, then the SM8550 config, then qcom-abl packaging.
+The kernel is **not** "stock Linux + a few device patches." It reproduces ROCKNIX's recipe:
+stock kernel.org source (pinned per SoC in `kernel/<soc>/kernel.conf` — sm8550 **`7.1.5`**,
+sm8250 **`7.1.2`**) with the full ROCKNIX patch stack applied **in order**, then the SoC
+config, then qcom-abl packaging. The pin can lead ROCKNIX (still 7.1.2 for both SoCs);
+`make sync` moves the patch stack, never the pin.
 
 ## Contents
 
@@ -58,9 +59,9 @@ order; the Phase 1 build script applies them in sorted order.
 
 ## What is NOT here (fetched at build, Phase 1)
 
-- **Stock Linux source** — kernel.org `linux-7.0.11.tar.xz`, version+sha-pinned in
-  `config/pocknix.conf` (`KERNEL_SOURCE_URL` / `KERNEL_SOURCE_SHA256`). Not committed (stock,
-  huge). Same base ROCKNIX pins in `packages/linux/package.mk`.
+- **Stock Linux source** — kernel.org `linux-<ver>.tar.xz`, version+sha-pinned per SoC in
+  `kernel/<soc>/kernel.conf` (`KERNEL_VERSION` / `KERNEL_SOURCE_URL` / `KERNEL_SOURCE_SHA256`).
+  Not committed (stock, huge).
 - **Firmware blobs** — sourced from the `linux-firmware` package per `kernel-firmware.dat`.
 
 ## Provenance / refreshing
