@@ -18,6 +18,7 @@
 # clocks always. balanced/powersave are accepted too for manual experiments.
 # Setting needs root (writes /var/lib + restarts a system unit).
 MODE_FILE=/var/lib/pocknix/lavd-mode
+GAME_MODE_FILE=/run/pocknix/game-mode
 DEFAULT=autopilot
 
 current() {
@@ -27,12 +28,43 @@ current() {
   printf '%s\n' "${m}"
 }
 
+# Per-game override: "<pid> <fan> <lavd>" from pocknix-proton-wrapper; dead pid = no
+# override (the pid is the game session itself), so reverts need no cleanup step.
+effective() {
+  if read -r pid _ lavd < "${GAME_MODE_FILE}" 2>/dev/null; then
+    case "${lavd}" in
+      autopilot|performance|balanced|powersave)
+        if [ -n "${pid}" ] && [ -d "/proc/${pid}" ]; then
+          printf '%s\n' "${lavd}"
+          return
+        fi
+        ;;
+    esac
+  fi
+  current
+}
+
 case "${1:-}" in
   "")
     current
     ;;
   run)
-    exec /usr/bin/scx_lavd "--$(current)"
+    # Supervise scx_lavd following the effective mode, so a per-game pick applies at game
+    # launch and reverts at exit without touching this unit. A mode change restarts the
+    # child (sched_ext falls back to EEVDF for the gap, same as a service restart).
+    child=""
+    trap 'kill "${child}" 2>/dev/null; exit 0' INT TERM
+    running=""
+    while :; do
+      want="$(effective)"
+      if [ "${want}" != "${running}" ] || ! kill -0 "${child}" 2>/dev/null; then
+        [ -n "${child}" ] && { kill "${child}" 2>/dev/null; wait "${child}" 2>/dev/null; }
+        /usr/bin/scx_lavd "--${want}" &
+        child=$!
+        running="${want}"
+      fi
+      sleep 3
+    done
     ;;
   toggle|autopilot|performance|balanced|powersave)
     m="${1}"

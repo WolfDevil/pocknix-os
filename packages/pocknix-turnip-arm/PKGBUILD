@@ -1,0 +1,101 @@
+# pocknix-turnip-arm — pinned aarch64 Turnip builds, selectable per game (ARM Proton path).
+# Counterpart of pocknix-turnip-x86: the "Mesa Version" tweak points VK_DRIVER_FILES here for
+# ARM Proton games (arm64ec wine renders through the native ARM Vulkan stack). Latest release
+# of each upstream series, built turnip-only from source with the SAME per-SoC tuning as
+# packages/mesa (POCKNIX_TUNE_CFLAGS from config/tuning/${SOC}.conf, sm8550 fallback).
+pkgname=pocknix-turnip-arm
+pkgver=20260804
+pkgrel=1
+pkgdesc="Pinned aarch64 Turnip builds for per-game Mesa selection (SoC-tuned)"
+arch=('aarch64')
+url="https://www.mesa3d.org/"
+license=("MIT AND BSD-3-Clause AND SGI-B-2.0")
+depends=(expat glibc libdrm libdisplay-info libx11 libxcb libxshmfence spirv-tools
+         systemd-libs vulkan-icd-loader wayland xcb-util-keysyms zlib zstd)
+makedepends=(meson ninja python-mako python-packaging python-yaml python-ply
+             expat libdrm libglvnd libdisplay-info spirv-tools systemd-libs vulkan-icd-loader
+             wayland wayland-protocols zlib zstd
+             xorgproto libx11 libxcb libxext libxshmfence libxxf86vm libxrandr xcb-util-keysyms)
+options=(!lto)
+# dir/tweak value strips the rc hyphen (makepkg pkgver rules); _srctag() restores it.
+_versions=('25.0.7' '25.1.9' '25.2.8' '25.3.6' '26.0.8' '26.1.6' '26.2.0rc3')
+source=('0001-c11-threads-fix-build-on-c23.patch'
+        'https://archive.mesa3d.org/mesa-25.0.7.tar.xz'
+        'https://archive.mesa3d.org/mesa-25.1.9.tar.xz'
+        'https://archive.mesa3d.org/mesa-25.2.8.tar.xz'
+        'https://archive.mesa3d.org/mesa-25.3.6.tar.xz'
+        'https://archive.mesa3d.org/mesa-26.0.8.tar.xz'
+        'https://archive.mesa3d.org/mesa-26.1.6.tar.xz'
+        'https://archive.mesa3d.org/mesa-26.2.0-rc3.tar.xz')
+sha256sums=('SKIP'
+            '592272df3cf01e85e7db300c449df5061092574d099da275d19e97ef0510f8a6'
+            '412df33a1bb3c785ed698555a3972118a37c458e7accf6ae53f4bb87b3db454a'
+            '097842f3e49d996868b38688db87b006f7d4541e93ce86d2f341d8b3e7be7c93'
+            '59217efeac3b64e7ced958324b9db7494f1e0741aeb22d780276514cc1b8f206'
+            'caf1c0061a68e88dfa74967a7e780c0e85d65b6c4e334cd69095a5dc54ad78bc'
+            '5296b88a0f1e012e2cb9ada150a2bbadf728ca81e5a4fb2ab43c83a4d2158606'
+            'f733c005660d342a51c6727d1ad481f43d05b4c601ac72247fa641e1d73a8ad1')
+
+_srctag() { printf '%s' "${1/rc/-rc}"; }
+
+prepare() {
+  # c11-threads C23 fix: upstream from 26.x, backported into some late 25.x point releases
+  # — dry-run first and apply only where missing (a reversed-patch prompt hangs the build).
+  local v
+  for v in "${_versions[@]}"; do
+    cd "${srcdir}/mesa-$(_srctag "$v")"
+    if patch -Np1 --forward --dry-run -i "${srcdir}/0001-c11-threads-fix-build-on-c23.patch" >/dev/null 2>&1; then
+      patch -Np1 --forward -i "${srcdir}/0001-c11-threads-fix-build-on-c23.patch"
+    fi
+  done
+}
+
+build() {
+  # Same tuning contract as packages/mesa: per-SoC flags injected by build-packages.sh,
+  # sm8550 (cortex-x3/armv9) fallback for a standalone makepkg.
+  local _rocknix_tune="${POCKNIX_TUNE_CFLAGS:--march=armv9-a+fp16+crypto+i8mm+bf16+memtag+sm4+sha3+nosve+nosve2 -mtune=cortex-x3 -mno-outline-atomics}"
+  export CFLAGS="${CFLAGS} ${_rocknix_tune}"
+  export CXXFLAGS="${CXXFLAGS} ${_rocknix_tune}"
+
+  # Turnip-only subset of packages/mesa's option set: no gallium/GL at all, both WSI
+  # platforms (x11 for XWayland games, wayland for gamescope-native).
+  local v
+  for v in "${_versions[@]}"; do
+    meson setup "build-${v}" "mesa-$(_srctag "$v")" --prefix=/usr --buildtype=plain \
+      -Db_ndebug=true \
+      -Dplatforms=x11,wayland \
+      -Dglx=disabled \
+      -Degl=disabled \
+      -Dgbm=disabled \
+      -Dopengl=false \
+      -Dgles1=disabled \
+      -Dgles2=disabled \
+      -Dgallium-drivers= \
+      -Dvulkan-drivers=freedreno \
+      -Dfreedreno-kmds=msm \
+      -Dvulkan-layers= \
+      -Dllvm=disabled \
+      -Dshader-cache=enabled \
+      -Dandroid-libbacktrace=disabled \
+      -Dlibunwind=disabled \
+      -Dvalgrind=disabled \
+      -Dbuild-tests=false
+    meson compile -C "build-${v}"
+  done
+}
+
+package() {
+  local v stage dir
+  for v in "${_versions[@]}"; do
+    stage="${srcdir}/stage-${v}"
+    meson install -C "build-${v}" --destdir "${stage}" --no-rebuild
+    dir="${pkgdir}/usr/share/pocknix/vk-arm/${v}"
+    install -Dm755 "${stage}/usr/lib/libvulkan_freedreno.so" "${dir}/libvulkan_freedreno.so"
+    # ICD manifest name is arch-suffixed pre-26 (freedreno_icd.aarch64.json); rewrite the
+    # library_path value unconditionally (26.x uses a bare soname, same as the x86 payloads).
+    sed -E "s|\"library_path\": *\"[^\"]*\"|\"library_path\": \"/usr/share/pocknix/vk-arm/${v}/libvulkan_freedreno.so\"|" \
+      "${stage}"/usr/share/vulkan/icd.d/freedreno_icd*.json > "${dir}/icd.json"
+    chmod 0644 "${dir}/icd.json"
+  done
+  install -Dm644 "mesa-$(_srctag "${_versions[-1]}")/docs/license.rst" -t "${pkgdir}/usr/share/licenses/${pkgname}"
+}

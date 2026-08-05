@@ -132,7 +132,7 @@ EOF
     # when /etc was alarm-owned -> "set timezone has no effect". Force every overlay path to root:root.
     rsync -a --chown=root:root "${POCKNIX_ROOT}/overlay/" "${root}/"
     chmod +x "${root}/usr/local/bin/pocknix-diag" \
-             "${root}/usr/local/bin/pocknix-expand-root" "${root}/usr/local/bin/pocknix-fancontrol" \
+             "${root}/usr/local/bin/pocknix-expand-root" \
              "${root}/usr/local/bin/pocknix-volumed" "${root}/usr/local/bin/pocknix-powerd" \
              "${root}/usr/local/bin/pocknix-install-internal" \
              "${root}/usr/local/bin/pocknix-uninstall-internal" 2>/dev/null || true

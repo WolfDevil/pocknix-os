@@ -1,10 +1,16 @@
 import { call } from "@decky/api";
-import type { Config, SdcardInfo, SnapshotStatus, Tweaks, UpdateInfo, UpdateStatus } from "./types";
+import type { Config, ConfigExportResult, ConfigImportResult, ConfigPreview, SdcardInfo, SnapshotStatus, Tweaks, UpdateInfo, UpdateStatus } from "./types";
 
 export const getConfig = () => call<[], Config>("get_config");
 export const setFanMode = (mode: string) => call<[string], Config>("set_fan_mode", mode);
 export const setLavdMode = (mode: string) => call<[string], Config>("set_lavd_mode", mode);
 export const saveTweaks = (data: Tweaks) => call<[Tweaks], Config>("save_tweaks", data);
+export const exportConfig = (appid: string, name: string, basename: string, allowOverwrite: boolean) =>
+  call<[string, string, string, boolean], ConfigExportResult>("export_config", appid, name, basename, allowOverwrite);
+export const configDir = () => call<[], string>("config_dir");
+export const readConfig = (path: string) => call<[string], ConfigPreview>("read_config", path);
+export const applyConfig = (path: string, sourceAppid: string, targetAppid: string, targetName: string) =>
+  call<[string, string, string, string], ConfigImportResult>("apply_config", path, sourceAppid, targetAppid, targetName);
 export const detectSdcard = () => call<[], SdcardInfo>("detect_sdcard");
 export const formatSdcard = (label: string) => call<[string], SdcardInfo>("format_sdcard", label);
 export const checkUpdates = () => call<[], UpdateInfo[]>("check_updates");

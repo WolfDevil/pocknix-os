@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/pocknix-fancontrol
+ExecStart=/usr/bin/pocknix-fancontrol
 Restart=on-failure
 RestartSec=5
 Nice=10

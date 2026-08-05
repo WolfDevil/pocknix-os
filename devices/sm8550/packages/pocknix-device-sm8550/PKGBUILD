@@ -4,7 +4,7 @@
 # installed devices (e.g. an internal-installed RP6) on their next pacman -Syu.
 pkgname=pocknix-device-sm8550
 pkgver=0.2.0
-pkgrel=5
+pkgrel=6
 pkgdesc="pocknix device metapackage: SM8550 family (Retroid Pocket 6, AYN Odin 2 family)"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
@@ -18,6 +18,8 @@ depends=('pocknix-bsp-sm8550'
          'pocknix-desktop'
          'pocknix-emulation'
          'pocknix-decky'
+         'pocknix-turnip-arm'
+         'pocknix-turnip-x86'
          'pocknix-sdcard-automount')
 # Exactly one device metapackage per install (wrong-device guard, same pattern
 # as the BSPs).

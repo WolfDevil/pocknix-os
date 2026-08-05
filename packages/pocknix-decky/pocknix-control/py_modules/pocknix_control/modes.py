@@ -42,7 +42,7 @@ def set_lavd_mode(mode):
     if mode not in LAVD_MODES:
         raise ValueError(f"unknown lavd mode: {mode!r}")
     # The helper persists the mode and restarts pocknix-lavd.service (live scheduler swap).
-    proc = run_cmd(["/usr/local/bin/pocknix-lavd-mode", mode], timeout=30)
+    proc = run_cmd(["/usr/bin/pocknix-lavd-mode", mode], timeout=30)
     if proc is None:
         raise RuntimeError("pocknix-lavd-mode failed to spawn")
     if proc.returncode != 0:

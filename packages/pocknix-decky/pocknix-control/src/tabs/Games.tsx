@@ -1,21 +1,18 @@
 import { PanelSection, ToggleField } from "@decky/ui";
 import type { Dispatch, SetStateAction } from "react";
-import { AddGameSection } from "../components/AddGame";
+import { setFanMode, setLavdMode } from "../backend";
+import { ConfigSection } from "../components/ConfigSection";
+import { EnvVarsButton, PerfFields, TweakFields, audioLatencyOptions, fanOptions, lavdOptions } from "../components/GameFields";
 import { SelectEdit } from "../components/widgets";
 import { availableGames, editTargetOptions } from "../lib/games";
 import { clone } from "../lib/util";
 import type { Config } from "../types";
 
-// Audio buffer (PULSE_LATENCY_MSEC): absorbs FEX-mixer overruns (SFX-burst crackle) at the
-// cost of audio latency — keep rhythm games on Game default. 60 measured ~10x fewer underruns.
-const audioLatencyOptions = [
-  { data: "", label: "Game default" },
-  { data: "60", label: "60 ms" },
-  { data: "90", label: "90 ms" },
-  { data: "120", label: "120 ms" },
-];
-
-export function Games({ config, setConfig }: { config: Config; setConfig: Dispatch<SetStateAction<Config | null>> }) {
+export function Games({ config, setConfig, reload }: {
+  config: Config;
+  setConfig: Dispatch<SetStateAction<Config | null>>;
+  reload: () => void;
+}) {
   const runtimeGame = config.game;
   const games = availableGames(config);
   const game = config.selectedGame || runtimeGame || null;
@@ -62,6 +59,16 @@ export function Games({ config, setConfig }: { config: Config; setConfig: Dispat
     setConfig((current) => (current ? { ...current, selectedGame: saved || null } : current));
   };
 
+  // Default target: FEX/audio/env edit tweaks.global; fan + scheduler are the LIVE system
+  // modes, applied immediately through the backend.
+  const applyMode = async (setter: (mode: string) => Promise<Config>, mode: string) => {
+    try {
+      const next = await setter(mode);
+      setConfig((current) => (current ? { ...current, fanMode: next.fanMode, lavdMode: next.lavdMode } : current));
+    } catch (error) {
+      reload();
+    }
+  };
   const presets = config.fexProfiles || {};
   const storedProfile = values.fexProfile as string | undefined;
   const fexValue = storedProfile && presets[storedProfile] ? storedProfile : "default";
@@ -69,20 +76,42 @@ export function Games({ config, setConfig }: { config: Config; setConfig: Dispat
   const storedLatency = String(values.audioLatency ?? "");
   const audioValue = audioLatencyOptions.some((option) => option.data === storedLatency) ? storedLatency : "";
 
+  const showFields = editingDefault || perGameEnabled;
   return (
     <>
-      <PanelSection title="GAME TWEAKS">
+      <PanelSection title="PERFORMANCE & GAME TWEAKS">
         <SelectEdit label="Game" value={game?.appid || ""} options={editTargetOptions(config)} onChange={setSelectedGame} />
-        <div className="pocknix-note">Changes apply on next game launch</div>
         {!editingDefault ? <ToggleField label="Use Per-Game Settings" checked={perGameEnabled} onChange={setPerGameEnabled} /> : null}
-        {editingDefault || perGameEnabled ? (
-          <>
-            <SelectEdit label="FEX Preset" value={fexValue} options={fexOptions} onChange={(id) => patchSettings({ fexProfile: id })} />
-            <SelectEdit label="Audio Buffer" value={audioValue} options={audioLatencyOptions} onChange={(id) => patchSettings({ audioLatency: id })} />
-          </>
-        ) : null}
       </PanelSection>
-      <AddGameSection />
+      {showFields ? (
+        <PanelSection title="PERFORMANCE">
+          {editingDefault ? (
+            <>
+              <SelectEdit label="CPU Scheduler" value={config.lavdMode} options={lavdOptions} onChange={(mode) => applyMode(setLavdMode, mode)} />
+              <SelectEdit label="Fan Curve" value={config.fanMode} options={fanOptions} onChange={(mode) => applyMode(setFanMode, mode)} />
+            </>
+          ) : (
+            <PerfFields values={values} patch={patchSettings} />
+          )}
+        </PanelSection>
+      ) : null}
+      {showFields ? (
+        <PanelSection title="GAME TWEAKS">
+          <div className="pocknix-note">Changes apply on next game launch</div>
+          {editingDefault ? (
+            <>
+              <SelectEdit label="FEX Preset" value={fexValue} options={fexOptions} onChange={(id) => patchSettings({ fexProfile: id })} />
+              <SelectEdit label="Audio Buffer" value={audioValue} options={audioLatencyOptions} onChange={(id) => patchSettings({ audioLatency: id })} />
+              <EnvVarsButton value={String(values.envVars ?? "")} onSave={(next) => patchSettings({ envVars: next })} />
+            </>
+          ) : (
+            <TweakFields config={config} appid={game!.appid} values={values} patch={patchSettings} />
+          )}
+        </PanelSection>
+      ) : null}
+      {!editingDefault && perGameEnabled ? (
+        <ConfigSection game={{ appid: game!.appid, name: game!.name || "" }} reload={reload} />
+      ) : null}
     </>
   );
 }

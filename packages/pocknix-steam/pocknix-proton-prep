@@ -104,12 +104,32 @@ apply_proton() { # <steamapps/common dir> <compatibilitytools.d dir> <internal n
     || { rm -f "${tooldir}/pocknix-proton"; install -Dm755 "${RES}/pocknix-proton" "${tooldir}/pocknix-proton"; }
 }
 
+# Valve x86 Protons launch through a SteamLinuxRuntime container; the tweak wrapper must
+# run BEFORE pressure-vessel so its env survives into the graphics capture — wrap the SLR
+# entry point, not the Proton inside. x86 runtimes only, never -arm64 (flavor would misread;
+# ARM tools bypass SLR). Steam restores Valve's manifest on updates; the grep guard re-patches.
+apply_slr() {
+  local slr_dir manifest
+  for slr_dir in "${STEAM}/steamapps/common/SteamLinuxRuntime"*/; do
+    [ -d "${slr_dir}" ] || continue
+    case "${slr_dir}" in *-arm64/) continue ;; esac
+    manifest="${slr_dir}toolmanifest.vdf"
+    [ -f "${manifest}" ] || continue
+    cmp -s "${RES}/pocknix-proton" "${slr_dir}pocknix-proton" 2>/dev/null \
+      || install -Dm755 "${RES}/pocknix-proton" "${slr_dir}pocknix-proton"
+    if grep -q '"/_v2-entry-point ' "${manifest}"; then
+      sed -i 's|"/_v2-entry-point |"/pocknix-proton |' "${manifest}"
+    fi
+  done
+}
+
 apply() {
   local entry
   for entry in "${ARM_PROTONS[@]}"; do
     IFS='|' read -r common tool internal <<<"${entry}"
     apply_proton "${common}" "${tool}" "${internal}"
   done
+  apply_slr
 
   # SYSTEM compat tools (pacman-shipped, e.g. proton-cachyos): also read at STARTUP.
   # Whether the native ARM client scans /usr/share/steam/compatibilitytools.d itself is

@@ -1,5 +1,6 @@
 import copy
 import json
+import re
 from pathlib import Path
 
 from .system import atomically_write
@@ -10,6 +11,34 @@ from .system import atomically_write
 TWEAKS_CONFIG = Path("/etc/pocknix/game-tweaks.json")
 FEX_PROFILES_CONFIG = Path("/usr/share/pocknix/fex-profiles.json")
 PLUGIN_FEX_PROFILES_CONFIG = Path(__file__).resolve().parent.parent.parent / "fex-profiles.json"
+TURNIP_DIRS = {"arm": Path("/usr/share/pocknix/vk-arm"), "x86": Path("/usr/share/pocknix/vk-x86")}
+
+
+def mesa_versions():
+    # One dropdown entry per mesa series ("25.2"); the wrapper resolves the series to the
+    # installed point release of whichever arch matches the game's Proton flavor, so a single
+    # pick serves ARM and x86 Proton alike. A series present on only one side is marked
+    # "(ARM only)"/"(x86 only)" — picking it for the other flavor is skipped at launch.
+    series = {}
+    for arch, base in TURNIP_DIRS.items():
+        try:
+            versions = [p.name for p in base.iterdir() if (p / "icd.json").is_file()]
+        except OSError:
+            continue
+        for v in versions:
+            m = re.match(r"([0-9]+)\.([0-9]+)", v)
+            if not m:
+                continue
+            entry = series.setdefault(f"{m.group(1)}.{m.group(2)}", {"archs": set(), "rc": True})
+            entry["archs"].add(arch)
+            entry["rc"] = entry["rc"] and "rc" in v
+    choices = []
+    for key, entry in series.items():
+        label = key + (" RC" if entry["rc"] else "")
+        if entry["archs"] != {"arm", "x86"}:
+            label += f" ({'ARM' if 'arm' in entry['archs'] else 'x86'} only)"
+        choices.append({"data": key, "label": label})
+    return sorted(choices, key=lambda c: tuple(int(x) for x in c["data"].split(".")))
 
 
 def load_fex_contract():

@@ -1,6 +1,7 @@
 import asyncio
 
 from pocknix_control.config import build_config
+from pocknix_control.configio import apply_config, config_dir, export_config, read_config
 from pocknix_control.modes import set_fan_mode, set_lavd_mode
 from pocknix_control.sdcard import detect_sdcard, format_sdcard
 from pocknix_control.snapshots import reboot_system, snapshot_status, start_rollback
@@ -30,6 +31,18 @@ class Plugin:
     async def save_tweaks(self, data):
         await asyncio.to_thread(save_tweaks, data)
         return await self.get_config()
+
+    async def export_config(self, appid, name, basename, allow_overwrite):
+        return await asyncio.to_thread(export_config, appid, name, basename, allow_overwrite)
+
+    async def config_dir(self):
+        return await asyncio.to_thread(config_dir)
+
+    async def read_config(self, path):
+        return await asyncio.to_thread(read_config, path)
+
+    async def apply_config(self, path, source_appid, target_appid, target_name):
+        return await asyncio.to_thread(apply_config, path, source_appid, target_appid, target_name)
 
     async def check_updates(self):
         return await asyncio.to_thread(check_updates)

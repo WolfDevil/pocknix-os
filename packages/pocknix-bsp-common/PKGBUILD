@@ -5,20 +5,25 @@
 # devices/<name>/packages/pocknix-bsp-<name>, which depends on this package.
 pkgname=pocknix-bsp-common
 pkgver=0.1.0
-pkgrel=4
-pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo"
+pkgrel=5
+pkgdesc="pocknix shared board support: sleep.d dispatcher, suspend hooks, power-key policy, session udev rules, wheel sudo, fan/scheduler daemons"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
 depends=('sudo')
-optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target')
+optdepends=('inputplumber: the 001-inputplumber suspend hooks manage its USB/IP deck target'
+            'scx-scheds: scx_lavd for pocknix-lavd.service (unit self-skips without it)')
+install=pocknix-bsp-common.install
 source=('pocknix-sleep' 'sdam-debug-pre' 'sdam-debug-post'
         'inputplumber-sleep-pre' 'inputplumber-sleep-post'
         'usb-role-sleep-pre' 'usb-role-sleep-post'
         '20-pocknix-powerkey.conf'
         '90-pocknix-backlight.rules' '60-pocknix-controllers.rules'
-        '10-pocknix-wheel')
-sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
+        '10-pocknix-wheel'
+        'pocknix-fancontrol' 'pocknix-fan-mode' 'pocknix-lavd-mode'
+        'pocknix-fancontrol.service' 'pocknix-lavd.service' 'pocknix-game-mode.conf')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP'
+            'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   # systemd system-sleep hook that dispatches our sleep.d/{pre,post} scripts
@@ -65,4 +70,16 @@ package() {
   # 0440 is the sudoers.d requirement (sudo skips group/world-writable files).
   install -Dm440 "${srcdir}/10-pocknix-wheel" \
     "${pkgdir}/etc/sudoers.d/10-pocknix-wheel"
+
+  # Fan curve + scx_lavd daemons; the .install migration removes the pre-packaging overlay
+  # copies. Both honor the per-game override /run/pocknix/game-mode from the proton wrapper.
+  install -Dm755 "${srcdir}/pocknix-fancontrol" "${pkgdir}/usr/bin/pocknix-fancontrol"
+  install -Dm755 "${srcdir}/pocknix-fan-mode"   "${pkgdir}/usr/bin/pocknix-fan-mode"
+  install -Dm755 "${srcdir}/pocknix-lavd-mode"  "${pkgdir}/usr/bin/pocknix-lavd-mode"
+  install -Dm644 "${srcdir}/pocknix-fancontrol.service" \
+    "${pkgdir}/usr/lib/systemd/system/pocknix-fancontrol.service"
+  install -Dm644 "${srcdir}/pocknix-lavd.service" \
+    "${pkgdir}/usr/lib/systemd/system/pocknix-lavd.service"
+  install -Dm644 "${srcdir}/pocknix-game-mode.conf" \
+    "${pkgdir}/usr/lib/tmpfiles.d/pocknix-game-mode.conf"
 }

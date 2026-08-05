@@ -7,7 +7,7 @@ import { tabIcons } from "./icons";
 import { currentGame } from "./lib/games";
 import { styles } from "./styles";
 import { Games } from "./tabs/Games";
-import { Power } from "./tabs/Power";
+import { Library } from "./tabs/Library";
 import { Storage } from "./tabs/Storage";
 import { Updater } from "./tabs/Updater";
 import type { Config } from "./types";
@@ -68,8 +68,8 @@ export function Content() {
         activeTab={tab}
         onShowTab={setTab}
         tabs={[
-          { id: "Games", title: tabIcons.Games, content: tabContent(<Games config={config} setConfig={setConfig} />) },
-          { id: "Power", title: tabIcons.Power, content: tabContent(<Power config={config} setConfig={setConfig} reload={load} />) },
+          { id: "Games", title: tabIcons.Games, content: tabContent(<Games config={config} setConfig={setConfig} reload={load} />) },
+          { id: "Library", title: tabIcons.Library, content: tabContent(<Library />) },
           { id: "Storage", title: tabIcons.Storage, content: tabContent(<Storage />) },
           { id: "Updater", title: tabIcons.Updater, content: tabContent(<Updater />) },
         ]}

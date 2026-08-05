@@ -4,6 +4,14 @@ export interface GameTweak {
   fexProfile?: string;
   /** Audio buffer in ms (PULSE_LATENCY_MSEC exported by pocknix-proton-wrapper); "" = game default. */
   audioLatency?: string;
+  /** Turnip series pin (e.g. "25.2"); the wrapper resolves arch + point release. "" = default. */
+  mesaVersion?: string;
+  /** Space-separated KEY=VALUE pairs applied at launch; launch options win over these. */
+  envVars?: string;
+  /** Per-game fan curve override, applied for the game session only; "" = use global. */
+  fanMode?: string;
+  /** Per-game scx_lavd mode override, applied for the game session only; "" = use global. */
+  lavdMode?: string;
   [key: string]: any;
 }
 
@@ -33,6 +41,8 @@ export interface Config {
   lavdMode: string;
   tweaks: Tweaks;
   fexProfiles: Record<string, FexProfile>;
+  /** Turnip payload choices, one per series (data "25.2"; label may carry "(ARM only)"). */
+  mesaVersions?: DropdownChoice[];
   installedGames: InstalledGame[];
   game?: GameRef | null;
   selectedGame?: GameRef | null;
@@ -73,6 +83,23 @@ export interface SnapshotStatus {
   rolledBack: { fromSnapshot: string; ts: string } | null;
   /** oldest -> newest; "roll back last update" targets the last entry */
   snapshots: SnapshotInfo[];
+}
+
+export interface ConfigExportResult {
+  /** true = target file already exists and nothing was written (rename/overwrite flow). */
+  exists: boolean;
+  base: string;
+  path: string;
+}
+
+export interface ConfigPreview {
+  device: string;
+  exported: string;
+  games: { appid: string; name: string; protonTool: string }[];
+}
+
+export interface ConfigImportResult {
+  protonTool: string;
 }
 
 export interface SdcardInfo {

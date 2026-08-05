@@ -1,0 +1,43 @@
+# pocknix-turnip-x86 — archived x86_64 Turnip (vulkan-freedreno) builds, selectable per game.
+# The Pocknix Control "Mesa Version" tweak points VK_DRIVER_FILES at one of these; FEX guests
+# resolve host paths the rootfs doesn't shadow, so x86 games load the chosen driver instead of
+# the rootfs copy. Latest release of each series Arch publishes for x86_64 (starts at 25.2.1 —
+# older series predate Arch's per-driver split; 26.2 RCs never hit the repos).
+pkgname=pocknix-turnip-x86
+pkgver=20260804
+pkgrel=1
+pkgdesc="Archived x86_64 Turnip builds for per-game Mesa selection under FEX"
+arch=('aarch64')
+url="https://github.com/shuuri-labs/pocknix-os"
+license=('MIT')
+depends=('fex-rootfs')
+_versions=('25.2.7-1' '25.3.5-1' '26.0.6-1' '26.1.6-1')
+source=("vulkan-freedreno-25.2.7-1-x86_64.pkg.tar.zst::https://archive.archlinux.org/packages/v/vulkan-freedreno/vulkan-freedreno-1%3A25.2.7-1-x86_64.pkg.tar.zst"
+        "vulkan-freedreno-25.3.5-1-x86_64.pkg.tar.zst::https://archive.archlinux.org/packages/v/vulkan-freedreno/vulkan-freedreno-1%3A25.3.5-1-x86_64.pkg.tar.zst"
+        "vulkan-freedreno-26.0.6-1-x86_64.pkg.tar.zst::https://archive.archlinux.org/packages/v/vulkan-freedreno/vulkan-freedreno-1%3A26.0.6-1-x86_64.pkg.tar.zst"
+        "vulkan-freedreno-26.1.6-1-x86_64.pkg.tar.zst::https://archive.archlinux.org/packages/v/vulkan-freedreno/vulkan-freedreno-1%3A26.1.6-1-x86_64.pkg.tar.zst")
+noextract=("${source[@]%%::*}")
+sha256sums=('b5554bb73674d6a5e7772bee71abd0e9d40929c61b5b690f79aba041ccffb5a8'
+            '6eecca2a8b639458371eca29e93605f83d7dc5ee7a3dab5980beddb758e90331'
+            '3d0c11b665b3409c8b6372f0369192355743d821727248115f973bd2c15bbbde'
+            '6b5785d7b7d7993a828d3f79c6c0e369a619d6e786dd2cfdfd8ac4ab1ad8a2d2')
+
+package() {
+  local full ver dir
+  for full in "${_versions[@]}"; do
+    ver="${full%-*}"                                # 25.2.7-1 -> 25.2.7 (dir + tweak value)
+    dir="${pkgdir}/usr/share/pocknix/vk-x86/${ver}"
+    install -d -m755 "${dir}"
+    tar --zstd -xOf "${srcdir}/vulkan-freedreno-${full}-x86_64.pkg.tar.zst" \
+      usr/lib/libvulkan_freedreno.so > "${dir}/libvulkan_freedreno.so"
+    chmod 0755 "${dir}/libvulkan_freedreno.so"
+    # Reuse the package's own ICD json (correct api_version), repointed at our copy.
+    # 26.x renamed it freedreno_icd.json AND switched library_path to a bare soname (which
+    # would resolve to the rootfs /usr/lib copy), so rewrite the value unconditionally.
+    tar --zstd -xOf "${srcdir}/vulkan-freedreno-${full}-x86_64.pkg.tar.zst" \
+      --wildcards 'usr/share/vulkan/icd.d/freedreno_icd*.json' \
+      | sed -E "s|\"library_path\": *\"[^\"]*\"|\"library_path\": \"/usr/share/pocknix/vk-x86/${ver}/libvulkan_freedreno.so\"|" \
+      > "${dir}/icd.json"
+    chmod 0644 "${dir}/icd.json"
+  done
+}
