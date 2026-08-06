@@ -29,12 +29,15 @@ def mesa_versions():
             m = re.match(r"([0-9]+)\.([0-9]+)", v)
             if not m:
                 continue
-            entry = series.setdefault(f"{m.group(1)}.{m.group(2)}", {"archs": set(), "rc": True})
+            entry = series.setdefault(f"{m.group(1)}.{m.group(2)}", {"archs": set(), "rc": True, "devel": True})
             entry["archs"].add(arch)
             entry["rc"] = entry["rc"] and "rc" in v
+            entry["devel"] = entry["devel"] and "devel" in v
     choices = []
     for key, entry in series.items():
-        label = key + (" RC" if entry["rc"] else "")
+        # "git" marks an unreleased main snapshot, so a devel payload can't read as a
+        # shipped release (the series key alone would show a bare "26.3").
+        label = key + (" RC" if entry["rc"] else "") + (" git" if entry["devel"] else "")
         if entry["archs"] != {"arm", "x86"}:
             label += f" ({'ARM' if 'arm' in entry['archs'] else 'x86'} only)"
         choices.append({"data": key, "label": label})
