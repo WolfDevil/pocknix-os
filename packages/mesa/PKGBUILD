@@ -6,10 +6,9 @@
 #    dead weight in the image and build-time deps (llvm, rust, clang) we don't want.
 #  - CPU tuning: built with ROCKNIX's exact SM8550 flags (cortex-x3/armv9-a, see build()) like
 #    our gamescope/mangohud, instead of ALARM's generic armv8-a baseline.
-#  - Version: 26.1.6 = ROCKNIX's nightly pin (projects/ROCKNIX/packages/graphics/mesa; their
-#    base packages/graphics/mesa still reads 25.1.5 but is not what nightlies ship). 25.1.x is
-#    unusable here regardless: its Turnip GPU-faults under Eden/Switch (CP opcode 0x0 ->
-#    device loss). Stock source, no patches, matching them.
+#  - Version: 26.2.0 (released 2026-08-05) — now AHEAD of ROCKNIX's nightly pin, which is still
+#    on 26.1.6. 25.1.x is unusable here regardless: its Turnip GPU-faults under Eden/Switch
+#    (CP opcode 0x0 -> device loss). Stock source, no patches.
 #
 # Driver set mirrors ROCKNIX SM8550 (options: GRAPHIC_DRIVERS=freedreno -> config/graphic):
 #   gallium = freedreno + zink + softpipe (their default fallback), vulkan = freedreno (turnip).
@@ -23,7 +22,7 @@
 pkgbase=mesa
 pkgname=(mesa vulkan-freedreno)
 epoch=2
-pkgver=26.1.6
+pkgver=26.2.0
 # only differs from pkgver for RCs (upstream tarball keeps the hyphen makepkg forbids)
 _srcver=${pkgver}
 pkgrel=1
@@ -49,7 +48,7 @@ options=(!lto)
 # git history / notes tools/ if a bindless miscompile ever actually surfaces).
 source=("https://archive.mesa3d.org/mesa-${_srcver}.tar.xz")
 # sha256 computed from the upstream archive.mesa3d.org tarball
-sha256sums=('5296b88a0f1e012e2cb9ada150a2bbadf728ca81e5a4fb2ab43c83a4d2158606')
+sha256sums=('efd4bb08cdb7c365a812cd4e6c9202ab55b2f22cdcd13c7d6c4f9647b799a4ef')
 
 prepare() {
   cd "mesa-${_srcver}"

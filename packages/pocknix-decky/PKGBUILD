@@ -11,12 +11,12 @@
 # The plugin frontend (dist/index.js) is prebuilt and committed — no node at package build time.
 pkgname=pocknix-decky
 pkgver=0.1.0
-pkgrel=18
+pkgrel=19
 pkgdesc="Decky Loader (under FEX, namespaced binfmt) + Pocknix Control QAM plugin"
 arch=('any')
 url="https://github.com/shuuri-labs/pocknix-os"
 license=('GPL2')
-# fex-emu/fex-rootfs = FEXInterpreter + the x86 rootfs the loader's libs resolve from.
+# fex-emu/fex-rootfs = the FEX interpreter + the x86 rootfs the loader's libs resolve from.
 # util-linux (unshare with --map-users) is in base. pocknix-steam ships the proton wrapper +
 # /usr/share/pocknix/fex-profiles.json the plugin's FEX tab drives (soft coupling: the plugin
 # carries a fallback copy of the profile contract, so no hard dep).

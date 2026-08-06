@@ -24,5 +24,6 @@ exec unshare --user --map-users=0,0,4294967295 --map-groups=0,0,4294967295 --mou
     mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
     grep -h . /usr/lib/binfmt.d/FEX-x86_64.conf > /proc/sys/fs/binfmt_misc/register
     grep -h . /usr/lib/binfmt.d/FEX-x86.conf    > /proc/sys/fs/binfmt_misc/register
-    exec /usr/bin/FEXInterpreter /home/deck/homebrew/services/PluginLoader
+    # /usr/bin/FEX, not FEXInterpreter: FEX-2608 deleted the deprecated alias.
+    exec /usr/bin/FEX /home/deck/homebrew/services/PluginLoader
   '
