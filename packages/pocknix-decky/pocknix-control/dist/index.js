@@ -32,6 +32,9 @@ const exportConfig = (appid, name, basename, allowOverwrite) => call("export_con
 const configDir = () => call("config_dir");
 const readConfig = (path) => call("read_config", path);
 const applyConfig = (path, sourceAppid, targetAppid, targetName) => call("apply_config", path, sourceAppid, targetAppid, targetName);
+const setLed = (side, r, g, b, brightness) => call("set_led", side, r, g, b, brightness);
+const setLedLinked = (linked) => call("set_led_linked", linked);
+const setLedEnabled = (enabled) => call("set_led_enabled", enabled);
 const detectSdcard = () => call("detect_sdcard");
 const formatSdcard = (label) => call("format_sdcard", label);
 const checkUpdates = () => call("check_updates");
@@ -94,6 +97,7 @@ const tabIcons = {
     Library: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("rect", { width: "18", height: "18", x: "3", y: "3", rx: "2" }), SP_JSX.jsx("path", { d: "M8 12h8" }), SP_JSX.jsx("path", { d: "M12 8v8" })] }) })),
     Updater: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), SP_JSX.jsx("polyline", { points: "7 10 12 15 17 10" }), SP_JSX.jsx("line", { x1: "12", x2: "12", y1: "15", y2: "3" })] }) })),
     Storage: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("line", { x1: "22", x2: "2", y1: "12", y2: "12" }), SP_JSX.jsx("path", { d: "M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" }), SP_JSX.jsx("line", { x1: "6", x2: "6.01", y1: "16", y2: "16" }), SP_JSX.jsx("line", { x1: "10", x2: "10.01", y1: "16", y2: "16" })] }) })),
+    Lighting: (SP_JSX.jsx(Icon, { path: SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx("path", { d: "M9 18h6" }), SP_JSX.jsx("path", { d: "M10 22h4" }), SP_JSX.jsx("path", { d: "M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" })] }) })),
 };
 
 function gameDisplayName(game) {
@@ -601,6 +605,140 @@ function Library() {
     return SP_JSX.jsx(AddGameSection, {});
 }
 
+// SliderField has only onChange, so commits are debounced. The pending value lives in
+// a ref so the unmount flush always sees the latest edit, not a stale first-render one.
+const COMMIT_DELAY = 350;
+function ColorControls({ zone, hsv, brightness, onCommit }) {
+    const [hue, saturation] = hsv;
+    const [localH, setLocalH] = SP_REACT.useState(hsv[0]);
+    const [localS, setLocalS] = SP_REACT.useState(hsv[1]);
+    const [localBri, setLocalBri] = SP_REACT.useState(brightness);
+    const pending = SP_REACT.useRef(null);
+    const onCommitRef = SP_REACT.useRef(onCommit);
+    onCommitRef.current = onCommit;
+    SP_REACT.useEffect(() => { setLocalH(hsv[0]); }, [hue]);
+    SP_REACT.useEffect(() => { setLocalS(hsv[1]); }, [saturation]);
+    SP_REACT.useEffect(() => { setLocalBri(brightness); }, [brightness]);
+    const schedule = (h, s, bri) => {
+        setLocalH(h);
+        setLocalS(s);
+        setLocalBri(bri);
+        pending.current = { hsv: [h, s, 100], bri };
+    };
+    SP_REACT.useEffect(() => {
+        if (pending.current === null)
+            return;
+        const snapshot = pending.current;
+        const timer = window.setTimeout(() => {
+            pending.current = null;
+            onCommitRef.current(snapshot.hsv, snapshot.bri);
+        }, COMMIT_DELAY);
+        return () => window.clearTimeout(timer);
+    }, [localH, localS, localBri]);
+    // QAM unmounts on close; flush any edit still in the debounce window.
+    SP_REACT.useEffect(() => () => {
+        if (pending.current !== null) {
+            const snapshot = pending.current;
+            pending.current = null;
+            onCommitRef.current(snapshot.hsv, snapshot.bri);
+        }
+    }, []);
+    const setHue = (h) => schedule(h, localS, localBri);
+    const setSaturation = (s) => schedule(localH, s, localBri);
+    const setBrightness = (b) => schedule(localH, localS, b);
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Hue", value: localH, min: 0, max: 359, step: 1, showValue: true, validValues: "range", valueSuffix: "\u00B0", bottomSeparator: "thick", className: `pocknix-led-${zone}-h`, onChange: setHue }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Saturation", value: localS, min: 0, max: 100, step: 1, showValue: true, validValues: "range", valueSuffix: "%", bottomSeparator: "thick", className: `pocknix-led-${zone}-s`, onChange: setSaturation }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.SliderField, { label: "Brightness", value: localBri, min: 0, max: 255, step: 1, showValue: true, validValues: "range", bottomSeparator: "thick", className: `pocknix-led-${zone}-v`, onChange: setBrightness }) }), SP_JSX.jsx("style", { children: `
+        .pocknix-led-${zone}-h .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right,
+            hsl(0,100%,50%), hsl(60,100%,50%), hsl(120,100%,50%),
+            hsl(180,100%,50%), hsl(240,100%,50%), hsl(300,100%,50%), hsl(360,100%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+        .pocknix-led-${zone}-s .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right, hsl(0,0%,100%), hsl(${localH},100%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+        .pocknix-led-${zone}-v .${DFL.gamepadSliderClasses.SliderTrack} {
+          background: linear-gradient(to right, hsl(0,0%,0%), hsl(${localH},${localS}%,50%)) !important;
+          --left-track-color: #0000 !important;
+          --colored-toggles-main-color: #0000 !important;
+        }
+      ` })] }));
+}
+
+// HSV <-> RGB conversion for the stick-light color picker.
+function hsvToRgb(h, s, v) {
+    const hh = ((h % 360) + 360) % 360;
+    const ss = Math.max(0, Math.min(100, s)) / 100;
+    const vv = Math.max(0, Math.min(100, v)) / 100;
+    const c = vv * ss;
+    const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+    const m = vv - c;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    if (hh < 60)
+        [r, g, b] = [c, x, 0];
+    else if (hh < 120)
+        [r, g, b] = [x, c, 0];
+    else if (hh < 180)
+        [r, g, b] = [0, c, x];
+    else if (hh < 240)
+        [r, g, b] = [0, x, c];
+    else if (hh < 300)
+        [r, g, b] = [x, 0, c];
+    else
+        [r, g, b] = [c, 0, x];
+    return [Math.round((r + m) * 255), Math.round((g + m) * 255), Math.round((b + m) * 255)];
+}
+function rgbToHsv(r, g, b) {
+    const rr = r / 255;
+    const gg = g / 255;
+    const bb = b / 255;
+    const max = Math.max(rr, gg, bb);
+    const min = Math.min(rr, gg, bb);
+    const delta = max - min;
+    let h = 0;
+    let s = 0;
+    const v = max;
+    if (delta !== 0) {
+        s = delta / max;
+        if (max === rr)
+            h = ((gg - bb) / delta + (gg < bb ? 6 : 0)) / 6;
+        else if (max === gg)
+            h = ((bb - rr) / delta + 2) / 6;
+        else
+            h = ((rr - gg) / delta + 4) / 6;
+    }
+    return [Math.round(h * 360), Math.round(s * 100), Math.round(v * 100)];
+}
+
+// Stored RGB holds the full-value color; the kernel multicolor class scales each
+// channel by brightness/max_brightness, so dimming is linear and the color survives.
+function commit(side, hsv, brightness, setConfig, reload) {
+    const [r, g, b] = hsvToRgb(hsv[0], hsv[1], 100);
+    setLed(side, r, g, b, brightness)
+        .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+        .catch(() => reload());
+}
+function sideHsv(side) {
+    return rgbToHsv(side.r, side.g, side.b);
+}
+function Lighting({ config, setConfig, reload }) {
+    const led = config.led;
+    const leftHsv = sideHsv(led.left);
+    const rightHsv = sideHsv(led.right);
+    const commitLeft = (hsv, brightness) => commit("left", hsv, brightness, setConfig, reload);
+    const commitRight = (hsv, brightness) => commit("right", hsv, brightness, setConfig, reload);
+    const commitBoth = (hsv, brightness) => commit("both", hsv, brightness, setConfig, reload);
+    return (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsxs(DFL.PanelSection, { title: "STICK LIGHTS", children: [SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Enable", checked: led.enabled, onChange: (value) => setLedEnabled(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+                                .catch(() => reload()) }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Link Left & Right", description: "Match both sticks to the same color.", checked: led.linked, disabled: !led.enabled, onChange: (value) => setLedLinked(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+                                .catch(() => reload()) }) })] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, brightness: led.right.brightness, onCommit: commitRight }) })] })))] }));
+}
+
 function cardSummary(card) {
     if (!card)
         return "Checking…";
@@ -860,12 +998,16 @@ function Content() {
     if (!config)
         return SP_JSX.jsx(DFL.PanelSection, { title: "Pocknix Control", children: SP_JSX.jsx(DFL.Field, { label: message }) });
     const tabContent = (content) => (SP_JSX.jsx("div", { className: "pocknix-control-tab-content", children: content }));
-    return (SP_JSX.jsxs("div", { className: "pocknix-control-tabs", children: [SP_JSX.jsx("style", { children: styles }), SP_JSX.jsx(DFL.Tabs, { activeTab: tab, onShowTab: setTab, tabs: [
-                    { id: "Games", title: tabIcons.Games, content: tabContent(SP_JSX.jsx(Games, { config: config, setConfig: setConfig, reload: load })) },
-                    { id: "Library", title: tabIcons.Library, content: tabContent(SP_JSX.jsx(Library, {})) },
-                    { id: "Storage", title: tabIcons.Storage, content: tabContent(SP_JSX.jsx(Storage, {})) },
-                    { id: "Updater", title: tabIcons.Updater, content: tabContent(SP_JSX.jsx(Updater, {})) },
-                ] })] }));
+    const tabs = [
+        { id: "Games", title: tabIcons.Games, content: tabContent(SP_JSX.jsx(Games, { config: config, setConfig: setConfig, reload: load })) },
+        { id: "Library", title: tabIcons.Library, content: tabContent(SP_JSX.jsx(Library, {})) },
+        ...(config.led.available
+            ? [{ id: "Lighting", title: tabIcons.Lighting, content: tabContent(SP_JSX.jsx(Lighting, { config: config, setConfig: setConfig, reload: load })) }]
+            : []),
+        { id: "Storage", title: tabIcons.Storage, content: tabContent(SP_JSX.jsx(Storage, {})) },
+        { id: "Updater", title: tabIcons.Updater, content: tabContent(SP_JSX.jsx(Updater, {})) },
+    ];
+    return (SP_JSX.jsxs("div", { className: "pocknix-control-tabs", children: [SP_JSX.jsx("style", { children: styles }), SP_JSX.jsx(DFL.Tabs, { activeTab: tab, onShowTab: setTab, tabs: tabs })] }));
 }
 
 /** Standalone per-game settings, opened from the library context menu. Saves on each change

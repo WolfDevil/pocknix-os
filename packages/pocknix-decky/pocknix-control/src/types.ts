@@ -44,6 +44,7 @@ export interface Config {
   /** Turnip payload choices, one per series (data "25.2"; label may carry "(ARM only)"). */
   mesaVersions?: DropdownChoice[];
   installedGames: InstalledGame[];
+  led: LedConfig;
   game?: GameRef | null;
   selectedGame?: GameRef | null;
 }
@@ -109,4 +110,21 @@ export interface SdcardInfo {
   fstype?: string;
   label?: string;
   mountpoint?: string;
+}
+
+export interface LedSide {
+  r: number;
+  g: number;
+  b: number;
+  brightness: number;
+}
+
+export type LedSideKey = "left" | "right" | "both";
+
+export interface LedConfig {
+  available: boolean;
+  enabled: boolean;
+  linked: boolean;
+  left: LedSide;
+  right: LedSide;
 }
