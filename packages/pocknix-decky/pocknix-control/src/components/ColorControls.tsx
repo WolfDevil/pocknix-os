@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from "react";
 // a ref so the unmount flush always sees the latest edit, not a stale first-render one.
 const COMMIT_DELAY = 350;
 
+// Hardware brightness is 0-255; the slider shows percent so it reads like the other two.
+const briToPercent = (bri: number) => Math.round((bri / 255) * 100);
+const percentToBri = (percent: number) => Math.round((percent / 100) * 255);
+
 interface ColorControlsProps {
   zone: string;
   hsv: [number, number, number];
@@ -21,9 +25,10 @@ export function ColorControls({ zone, hsv, brightness, onCommit }: ColorControls
   const onCommitRef = useRef(onCommit);
   onCommitRef.current = onCommit;
 
-  useEffect(() => { setLocalH(hsv[0]); }, [hue]);
-  useEffect(() => { setLocalS(hsv[1]); }, [saturation]);
-  useEffect(() => { setLocalBri(brightness); }, [brightness]);
+  // A commit response landing mid-drag would otherwise snap the slider backwards.
+  useEffect(() => { if (!pending.current) setLocalH(hsv[0]); }, [hue]);
+  useEffect(() => { if (!pending.current) setLocalS(hsv[1]); }, [saturation]);
+  useEffect(() => { if (!pending.current) setLocalBri(brightness); }, [brightness]);
 
   const schedule = (h: number, s: number, bri: number) => {
     setLocalH(h);
@@ -93,15 +98,16 @@ export function ColorControls({ zone, hsv, brightness, onCommit }: ColorControls
       <PanelSectionRow>
         <SliderField
           label="Brightness"
-          value={localBri}
+          value={briToPercent(localBri)}
           min={0}
-          max={255}
+          max={100}
           step={1}
           showValue
           validValues="range"
+          valueSuffix="%"
           bottomSeparator="thick"
           className={`pocknix-led-${zone}-v`}
-          onChange={setBrightness}
+          onChange={(percent: number) => setBrightness(percentToBri(percent))}
         />
       </PanelSectionRow>
       <style>{`
