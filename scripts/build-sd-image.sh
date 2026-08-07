@@ -104,11 +104,13 @@ firstboot_config() {
 # The root line names NO subvol on purpose: the kernel mounts the btrfs DEFAULT
 # subvolume, which is how pocknix-rollback switches roots without touching boot
 # config. The other subvols are toplevel-relative, unaffected by set-default.
-PARTUUID=${SD_ROOT_PARTUUID}  /                  btrfs  rw,noatime,compress=zstd:3                       0 0
-PARTUUID=${SD_ROOT_PARTUUID}  /home              btrfs  rw,noatime,compress=zstd:3,subvol=@home          0 0
-PARTUUID=${SD_ROOT_PARTUUID}  /.snapshots        btrfs  rw,noatime,compress=zstd:3,subvol=@snapshots     0 0
-PARTUUID=${SD_ROOT_PARTUUID}  /var/cache/pacman  btrfs  rw,noatime,compress=zstd:3,subvol=@pacman-cache  0 0
-PARTUUID=${SD_ROOT_PARTUUID}  /var/log           btrfs  rw,noatime,compress=zstd:3,subvol=@var-log       0 0
+# zstd:1 not :3 for the device's own writes (cheaper encoder). The level is
+# encoder-side only, so the image's :3 extents keep reading back unchanged.
+PARTUUID=${SD_ROOT_PARTUUID}  /                  btrfs  rw,noatime,compress=zstd:1                       0 0
+PARTUUID=${SD_ROOT_PARTUUID}  /home              btrfs  rw,noatime,compress=zstd:1,subvol=@home          0 0
+PARTUUID=${SD_ROOT_PARTUUID}  /.snapshots        btrfs  rw,noatime,compress=zstd:1,subvol=@snapshots     0 0
+PARTUUID=${SD_ROOT_PARTUUID}  /var/cache/pacman  btrfs  rw,noatime,compress=zstd:1,subvol=@pacman-cache  0 0
+PARTUUID=${SD_ROOT_PARTUUID}  /var/log           btrfs  rw,noatime,compress=zstd:1,subvol=@var-log       0 0
 PARTUUID=${SD_BOOT_PARTUUID}  /flash             vfat   rw,noatime,nofail                                0 2
 EOF
   echo "pocknix" > "${root}/etc/hostname"
@@ -343,6 +345,8 @@ main() {
   # root partition: subvolume skeleton, then the OS subvol (@) becomes the fs
   # DEFAULT — the kernel cmdline/fstab never name a subvol, so rollback is just
   # set-default elsewhere + reboot (see pocknix-snapshots).
+  # Populate stays zstd:3 while the shipped fstab is zstd:1 — this pass runs once on
+  # the build host, so the better ratio costs the device nothing.
   log "creating btrfs subvolumes (@ @home @snapshots @pacman-cache @var-log)"
   mount -o compress=zstd:3 "${LOOP}p2" "${MNT}"
   local sv
