@@ -2,7 +2,7 @@ import asyncio
 
 from pocknix_control.config import build_config
 from pocknix_control.configio import apply_config, config_dir, export_config, read_config
-from pocknix_control.led import restore_led, set_led, set_led_enabled, set_led_linked
+from pocknix_control.led import restore_led, set_led, set_led_enabled, set_led_linked, set_led_sides
 from pocknix_control.modes import set_fan_mode, set_lavd_mode
 from pocknix_control.sdcard import detect_sdcard, format_sdcard
 from pocknix_control.snapshots import reboot_system, snapshot_status, start_rollback
@@ -48,8 +48,8 @@ class Plugin:
     async def apply_config(self, path, source_appid, target_appid, target_name):
         return await asyncio.to_thread(apply_config, path, source_appid, target_appid, target_name)
 
-    # These return only the LED block: a full build_config() re-parses the whole Steam
-    # library, and colour edits commit repeatedly while a slider is being dialled in.
+    # Not get_config(): that re-parses the whole Steam library, and a colour slider
+    # commits repeatedly while it is being dialled in.
     async def set_led(self, side, r, g, b, brightness):
         return await asyncio.to_thread(set_led, side, r, g, b, brightness)
 
@@ -58,6 +58,9 @@ class Plugin:
 
     async def set_led_enabled(self, enabled):
         return await asyncio.to_thread(set_led_enabled, enabled)
+
+    async def set_led_sides(self, sides):
+        return await asyncio.to_thread(set_led_sides, sides)
 
     async def check_updates(self):
         return await asyncio.to_thread(check_updates)

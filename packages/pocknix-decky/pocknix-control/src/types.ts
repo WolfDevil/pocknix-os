@@ -123,8 +123,10 @@ export type LedSideKey = "left" | "right" | "both";
 
 export interface LedConfig {
   available: boolean;
+  sidesAvailable: boolean;
   enabled: boolean;
   linked: boolean;
+  sides: boolean;
   left: LedSide;
   right: LedSide;
 }

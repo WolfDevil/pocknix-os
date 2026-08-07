@@ -10,11 +10,12 @@ from .system import atomically_write
 # RP6/RP5/Flip 2: /sys/class/leds/rgb:l1..l4 and rgb:r1..r4 (4 ring segments per stick).
 # Odin 2: /sys/class/leds/left-joystick and right-joystick (1 node per stick,
 # pwm-leds-multicolor). Same multi_intensity/brightness ABI in both cases.
+# Odin 2 also has left-side/right-side strips, which carry no colour of their own.
 LED_CONFIG = Path("/etc/pocknix/led.json")
 LED_CLASS_DIR = Path("/sys/class/leds")
 
-# Every read-modify-write of the config file runs under this: the QAM flushes both
-# sticks' pending edits in one tick on close, and those land as concurrent calls.
+# The QAM flushes both sticks' pending edits in one tick on close, so the setters
+# land concurrently.
 _LOCK = threading.Lock()
 
 
@@ -28,13 +29,23 @@ def _segments(side):
     return [node] if node.is_dir() else []
 
 
+def _side_segments(side):
+    node = LED_CLASS_DIR / f"{side}-side"
+    return [node] if node.is_dir() else []
+
+
 def _available():
     return bool(_segments("left") or _segments("right"))
+
+
+def _sides_available():
+    return bool(_side_segments("left") or _side_segments("right"))
 
 
 DEFAULTS = {
     "enabled": False,
     "linked": True,
+    "sides": True,
     "left": {"r": 0, "g": 200, "b": 255, "brightness": 180},
     "right": {"r": 0, "g": 200, "b": 255, "brightness": 180},
 }
@@ -58,6 +69,7 @@ def _sanitize(data):
         return clean
     clean["enabled"] = bool(data.get("enabled", DEFAULTS["enabled"]))
     clean["linked"] = bool(data.get("linked", DEFAULTS["linked"]))
+    clean["sides"] = bool(data.get("sides", DEFAULTS["sides"]))
     for side in ("left", "right"):
         src = data.get(side)
         if isinstance(src, dict):
@@ -110,8 +122,10 @@ def _apply_side(segments, rgb, brightness):
 def _apply_config(data):
     left_leds = _segments("left")
     right_leds = _segments("right")
+    left_sides = _side_segments("left")
+    right_sides = _side_segments("right")
     if not data["enabled"]:
-        for led in left_leds + right_leds:
+        for led in left_leds + right_leds + left_sides + right_sides:
             try:
                 (led / "brightness").write_text("0\n", encoding="utf-8")
             except OSError:
@@ -121,10 +135,20 @@ def _apply_config(data):
     right = data["right"] if not data["linked"] else left
     _apply_side(left_leds, _rgb(left), left["brightness"])
     _apply_side(right_leds, _rgb(right), right["brightness"])
+    if data["sides"]:
+        _apply_side(left_sides, _rgb(left), left["brightness"])
+        _apply_side(right_sides, _rgb(right), right["brightness"])
+    else:
+        for led in left_sides + right_sides:
+            try:
+                (led / "brightness").write_text("0\n", encoding="utf-8")
+            except OSError:
+                pass
 
 
 def _with_available(data):
     data["available"] = _available()
+    data["sidesAvailable"] = _sides_available()
     return data
 
 
@@ -163,6 +187,15 @@ def set_led_enabled(enabled):
     with _LOCK:
         data = _load()
         data["enabled"] = bool(enabled)
+        _save(data)
+        _apply_config(data)
+        return _with_available(data)
+
+
+def set_led_sides(sides):
+    with _LOCK:
+        data = _load()
+        data["sides"] = bool(sides)
         _save(data)
         _apply_config(data)
         return _with_available(data)

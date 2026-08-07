@@ -15,6 +15,7 @@ export const setLed = (side: LedSideKey, r: number, g: number, b: number, bright
   call<[LedSideKey, number, number, number, number], LedConfig>("set_led", side, r, g, b, brightness);
 export const setLedLinked = (linked: boolean) => call<[boolean], LedConfig>("set_led_linked", linked);
 export const setLedEnabled = (enabled: boolean) => call<[boolean], LedConfig>("set_led_enabled", enabled);
+export const setLedSides = (sides: boolean) => call<[boolean], LedConfig>("set_led_sides", sides);
 export const detectSdcard = () => call<[], SdcardInfo>("detect_sdcard");
 export const formatSdcard = (label: string) => call<[string], SdcardInfo>("format_sdcard", label);
 export const checkUpdates = () => call<[], UpdateInfo[]>("check_updates");

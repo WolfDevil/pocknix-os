@@ -1,6 +1,6 @@
 import { PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
 import type { Dispatch, SetStateAction } from "react";
-import { setLed, setLedEnabled, setLedLinked } from "../backend";
+import { setLed, setLedEnabled, setLedLinked, setLedSides } from "../backend";
 import { ColorControls } from "../components/ColorControls";
 import { hsvToRgb, rgbToHsv } from "../lib/rgb";
 import type { Config, LedSide, LedSideKey } from "../types";
@@ -58,6 +58,21 @@ export function Lighting({ config, setConfig, reload }: {
             }
           />
         </PanelSectionRow>
+        {led.sidesAvailable && (
+          <PanelSectionRow>
+            <ToggleField
+              label="Side Lights"
+              description="Match the side lighting to the sticks."
+              checked={led.sides}
+              disabled={!led.enabled}
+              onChange={(value) =>
+                setLedSides(value)
+                  .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
+                  .catch(() => reload())
+              }
+            />
+          </PanelSectionRow>
+        )}
       </PanelSection>
 
       {led.enabled && (

@@ -35,6 +35,7 @@ const applyConfig = (path, sourceAppid, targetAppid, targetName) => call("apply_
 const setLed = (side, r, g, b, brightness) => call("set_led", side, r, g, b, brightness);
 const setLedLinked = (linked) => call("set_led_linked", linked);
 const setLedEnabled = (enabled) => call("set_led_enabled", enabled);
+const setLedSides = (sides) => call("set_led_sides", sides);
 const detectSdcard = () => call("detect_sdcard");
 const formatSdcard = (label) => call("format_sdcard", label);
 const checkUpdates = () => call("check_updates");
@@ -619,8 +620,7 @@ function ColorControls({ zone, hsv, brightness, onCommit }) {
     const pending = SP_REACT.useRef(null);
     const onCommitRef = SP_REACT.useRef(onCommit);
     onCommitRef.current = onCommit;
-    // Adopt committed values only when nothing is pending: a commit response landing
-    // mid-drag would otherwise snap the slider back to the older value.
+    // A commit response landing mid-drag would otherwise snap the slider backwards.
     SP_REACT.useEffect(() => { if (!pending.current)
         setLocalH(hsv[0]); }, [hue]);
     SP_REACT.useEffect(() => { if (!pending.current)
@@ -744,7 +744,9 @@ function Lighting({ config, setConfig, reload }) {
                                 .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
                                 .catch(() => reload()) }) }), SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Link Left & Right", description: "Match both sticks to the same color.", checked: led.linked, disabled: !led.enabled, onChange: (value) => setLedLinked(value)
                                 .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
-                                .catch(() => reload()) }) })] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, brightness: led.right.brightness, onCommit: commitRight }) })] })))] }));
+                                .catch(() => reload()) }) }), led.sidesAvailable && (SP_JSX.jsx(DFL.PanelSectionRow, { children: SP_JSX.jsx(DFL.ToggleField, { label: "Side Lights", description: "Match the side lighting to the sticks.", checked: led.sides, disabled: !led.enabled, onChange: (value) => setLedSides(value)
+                                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
+                                .catch(() => reload()) }) }))] }), led.enabled && (led.linked ? (SP_JSX.jsx(DFL.PanelSection, { title: "BOTH STICKS", children: SP_JSX.jsx(ColorControls, { zone: "both", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitBoth }) })) : (SP_JSX.jsxs(SP_JSX.Fragment, { children: [SP_JSX.jsx(DFL.PanelSection, { title: "LEFT STICK", children: SP_JSX.jsx(ColorControls, { zone: "left", hsv: leftHsv, brightness: led.left.brightness, onCommit: commitLeft }) }), SP_JSX.jsx(DFL.PanelSection, { title: "RIGHT STICK", children: SP_JSX.jsx(ColorControls, { zone: "right", hsv: rightHsv, brightness: led.right.brightness, onCommit: commitRight }) })] })))] }));
 }
 
 function cardSummary(card) {

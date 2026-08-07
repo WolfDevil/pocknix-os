@@ -25,8 +25,7 @@ export function ColorControls({ zone, hsv, brightness, onCommit }: ColorControls
   const onCommitRef = useRef(onCommit);
   onCommitRef.current = onCommit;
 
-  // Adopt committed values only when nothing is pending: a commit response landing
-  // mid-drag would otherwise snap the slider back to the older value.
+  // A commit response landing mid-drag would otherwise snap the slider backwards.
   useEffect(() => { if (!pending.current) setLocalH(hsv[0]); }, [hue]);
   useEffect(() => { if (!pending.current) setLocalS(hsv[1]); }, [saturation]);
   useEffect(() => { if (!pending.current) setLocalBri(brightness); }, [brightness]);
