@@ -10,7 +10,7 @@ import type { Config, LedSide, LedSideKey } from "../types";
 function commit(side: LedSideKey, hsv: [number, number, number], brightness: number, setConfig: Dispatch<SetStateAction<Config | null>>, reload: () => void) {
   const [r, g, b] = hsvToRgb(hsv[0], hsv[1], 100);
   setLed(side, r, g, b, brightness)
-    .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+    .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
     .catch(() => reload());
 }
 
@@ -40,7 +40,7 @@ export function Lighting({ config, setConfig, reload }: {
             checked={led.enabled}
             onChange={(value) =>
               setLedEnabled(value)
-                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
                 .catch(() => reload())
             }
           />
@@ -53,7 +53,7 @@ export function Lighting({ config, setConfig, reload }: {
             disabled={!led.enabled}
             onChange={(value) =>
               setLedLinked(value)
-                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next.led } : cur)))
+                .then((next) => setConfig((cur) => (cur ? { ...cur, led: next } : cur)))
                 .catch(() => reload())
             }
           />

@@ -48,17 +48,16 @@ class Plugin:
     async def apply_config(self, path, source_appid, target_appid, target_name):
         return await asyncio.to_thread(apply_config, path, source_appid, target_appid, target_name)
 
+    # These return only the LED block: a full build_config() re-parses the whole Steam
+    # library, and colour edits commit repeatedly while a slider is being dialled in.
     async def set_led(self, side, r, g, b, brightness):
-        await asyncio.to_thread(set_led, side, r, g, b, brightness)
-        return await self.get_config()
+        return await asyncio.to_thread(set_led, side, r, g, b, brightness)
 
     async def set_led_linked(self, linked):
-        await asyncio.to_thread(set_led_linked, linked)
-        return await self.get_config()
+        return await asyncio.to_thread(set_led_linked, linked)
 
     async def set_led_enabled(self, enabled):
-        await asyncio.to_thread(set_led_enabled, enabled)
-        return await self.get_config()
+        return await asyncio.to_thread(set_led_enabled, enabled)
 
     async def check_updates(self):
         return await asyncio.to_thread(check_updates)
