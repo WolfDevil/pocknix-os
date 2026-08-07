@@ -1,5 +1,5 @@
 [Unit]
-Description=Decky Loader (via FEXInterpreter)
+Description=Decky Loader (via FEX)
 # The released PluginLoader is an x86_64 PyInstaller binary; it (and the plugin backends it
 # spawns) needs the FEX x86 binfmt handlers to exec children, which pocknix disables globally
 # (they break Steam's Proton compat-tool setup — see pocknix-fex-binfmt-off.service).

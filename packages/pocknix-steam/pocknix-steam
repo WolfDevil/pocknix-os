@@ -1,15 +1,10 @@
 #!/bin/bash
-# pocknix-steam — launch the native ARM64 Steam client in Big Picture under gamescope on the RP6.
-# Client setup modeled on armada's launch-steam (native, NON-FEX): cd into steamrtarm64,
-# steamrtarm64 first on LD_LIBRARY_PATH. Panel geometry fixed for the RP6.
+# pocknix-steam — launch the native ARM64 Steam client in Big Picture under gamescope.
 #
-# Performance overlay: gamescope --mangoapp spawns the `mangoapp` process (from the mangohud dep)
-# that Steam's built-in 'Performance' overlay drives. IMPORTANT: it only renders once you enable
-# Steam Settings > In Game > Performance > "Show performance metrics in this game" — the overlay
-# being blank in earlier testing was that toggle being OFF, NOT a mangoapp/gamescope coupling
-# problem. So this is just `--mangoapp` + the mangohud dep; no MANGOHUD_CONFIGFILE plumbing needed.
-# GPU load/clock/temp + power draw now render too (mangohud carries the ROCKNIX/armada Adreno+
-# Qualcomm reader patches — vanilla mangohud has no msm/freedreno reader). See progress.md.
+# The performance overlay is just `--mangoapp` + the mangohud dep, no config plumbing: it stays
+# blank until Steam's Settings > In Game > Performance > "Show performance metrics" is on, which
+# is a user toggle, not a wiring bug. GPU/power fields need OUR mangohud (vanilla has no
+# msm/freedreno reader).
 set -e
 
 export HOME="${HOME:-/root}"
@@ -17,53 +12,40 @@ STEAM="${HOME}/.local/share/Steam"
 CLIENT_DIR="${STEAM}/steamrtarm64"
 CLIENT="${CLIENT_DIR}/steam"
 
-# armada's LD_LIBRARY_PATH: the client's own dir FIRST (bundled libvpx.so.6 etc.), then the
-# aarch64 shim dir (libibus shim). steamrtarm64/steam re-execs into its runtime from here.
+# Order matters: the client's own dir FIRST (its bundled libvpx.so.6 shadows the system one),
+# then the aarch64 shim dir.
 LDLP="${CLIENT_DIR}:${STEAM}/lib/aarch64-linux-gnu"
 
-# The native client + runtime are PRE-EXTRACTED into this HOME at BUILD time (build-image.sh's
-# bootstrap_steam_seed unpacks the baked tree into the rootfs /home/deck), so first boot needs no
-# network AND no extract wait. If the tree is somehow absent there's nothing to launch — fail clearly.
-# (No network-installer fallback: pocknix-steam-install runs ONLY at build time now, inside the
-# bake; the image always ships the extracted client.)
+# The client tree is seeded at BUILD time (no network installer at runtime), so an absent tree
+# is unrecoverable here, not something to fall back from.
 if [ ! -x "${CLIENT}" ]; then
   echo "[pocknix-steam] native Steam client missing at ${CLIENT} — the build-time bake didn't seed it." >&2
   exit 1
 fi
 
-# CRITICAL: Steam resolves its legacy module paths (bin/vgui2_s.dll …) RELATIVE TO getcwd.
-# armada cd's into steamrtarm64 before launch; cd'ing to $HOME makes 'bin/vgui2_s' unresolvable
-# -> "Could not load module 'bin/vgui2_s.dll'". gamescope passes CWD to the client.
+# Steam resolves its legacy module paths (bin/vgui2_s.dll ...) RELATIVE TO getcwd, and gamescope
+# passes our cwd to the client: launching from $HOME gives "Could not load module 'bin/vgui2_s.dll'".
 cd "${CLIENT_DIR}" 2>/dev/null || { echo "missing ${CLIENT_DIR}" >&2; exit 1; }
 
-# Decky/CEF debugger marker armada touches (harmless if unused).
+# Marker Decky's CEF remote-debugging connection looks for.
 touch "${STEAM}/.cef-enable-remote-debugging" 2>/dev/null || true
 
-# Pin the client beta channel EVERY launch. The native ARM64 Big-Picture client only works on
-# steamdeck_publicbeta; if anything flips package/beta to steamdeck_stable (e.g. a desktop-mode
-# `steam` launch, or a server-side channel change), Steam sees "installed version 0" for the new
-# channel and dead-ends forever on "Installing update" with steamwebhelper crash-looping -> the
-# session hangs. Re-asserting it here makes the session self-heal on the next launch.
+# Re-pin EVERY launch: the ARM64 Big-Picture client only works on steamdeck_publicbeta, and
+# anything that flips the channel (a desktop-mode `steam`, a server-side change) leaves Steam
+# reading "installed version 0" and stuck forever on "Installing update" with steamwebhelper
+# crash-looping. Re-asserting here is what makes the next launch self-heal.
 mkdir -p "${STEAM}/package"
 echo steamdeck_publicbeta > "${STEAM}/package/beta"
 
-# --- Proton 11 ARM compat tool: register + keep usable, decoupled from Steam's own download/updates
-# so the FIRST in-Steam download works with NO reboot. The registration (compatibilitytools.d) is
-# read by Steam only at STARTUP, so it must exist before Steam launches — pocknix-proton-prep writes
-# it here unconditionally (even pre-download). The dist + toolmanifest (read at game launch) are
-# filled in / re-fixed by pocknix-proton-prep.service --watch the moment Proton is downloaded or
-# updated, so a mid-session download becomes usable immediately. See pocknix-proton-prep.
+# Must run BEFORE gamescope: Steam reads compatibilitytools.d only at startup, so the ARM Proton
+# registration has to exist by then (written unconditionally, even before Proton is downloaded).
+# The --watch service fills in dist + toolmanifest later, so a mid-session download needs no reboot.
 /usr/bin/pocknix-proton-prep
-# (binfmt) The FEX x86 binfmt handlers are ON by default (pocknix-fex-binfmt.service applies the
-# persisted choice at boot, as root — the deck session can't write /proc/sys/fs/binfmt_misc).
-# Binfmt-on is what makes x86 Proton + Steam Linux Runtime work OOTB; hardware-validated harmless
-# for ARM Proton on both SoCs (2026-07-24). `pocknix-fex-binfmt off` opts out.
 
-# Self-heal a session SWITCH: steamos-session-select SIGTERMs gamescope to go to Plasma, but the
-# Steam client re-parents and keeps running (with its single-instance lock). On the way back the new
-# steam logs "Steam is already running, exiting", gamescope's primary child dies instantly, and the
-# supervisor hot-loops (black flashes). Clear any leftover Steam before launching so this instance
-# owns the session. Only ever runs at game-session START, when no legit Steam should be alive.
+# Session SWITCH self-heal: steamos-session-select SIGTERMs gamescope, but the Steam client
+# re-parents and survives holding its single-instance lock. Coming back, the new steam exits with
+# "Steam is already running", gamescope's primary child dies instantly and the supervisor hot-loops.
+# Safe because this only runs at session START, when no legitimate Steam is alive.
 uid="$(id -u)"
 if pgrep -u "${uid}" -x steam >/dev/null 2>&1 || pgrep -u "${uid}" -f steamwebhelper >/dev/null 2>&1; then
   echo "[pocknix-steam] clearing a stale Steam from a previous session..."
@@ -73,25 +55,17 @@ if pgrep -u "${uid}" -x steam >/dev/null 2>&1 || pgrep -u "${uid}" -f steamwebhe
   pkill -u "${uid}" -KILL -f steamwebhelper 2>/dev/null || true
 fi
 
-# NO global default compat tool. Seeding CompatToolMapping "0" (Settings -> Compatibility ->
-# "Run other titles with") makes Steam refuse to install Valve compat tools with
-# "Invalid platform" (steam-for-linux issue 6874). Users pick a Proton per game instead.
+# Do NOT seed a global default compat tool here: a CompatToolMapping "0" entry makes Steam refuse
+# to install Valve compat tools with "Invalid platform" (steam-for-linux issue 6874).
 
-# ES-DE + ES-DE favorites into the Steam library: pocknix-steam-sync (pocknix-emulation) writes
-# shortcuts.vdf DIRECTLY — no Steam ROM Manager (its Electron CLI deadlocked on every display
-# backend on this device; retired 2026-07-05). Right moment: Steam is guaranteed down (it rewrites
-# shortcuts.vdf on exit, clobbering live edits) and the sync needs no display. <1s, idempotent.
+# Must stay HERE, before Steam starts: Steam rewrites shortcuts.vdf on exit, so a sync against a
+# live client is clobbered.
 if command -v pocknix-steam-sync >/dev/null 2>&1; then
   pocknix-steam-sync || echo "[pocknix-steam] Steam-library sync failed (non-fatal)"
 fi
 
-# Panel geometry/orientation come from the DEVICE layer: /usr/lib/pocknix/device.conf is
-# shipped by the device's BSP (pocknix-bsp-<device>); /etc/pocknix/device.conf is the optional
-# admin override (sourced last, wins). Fallbacks = the RP6 values, so behavior is unchanged
-# if no device.conf exists. Rotation is folded into gamescope's COMPOSITE pass (upstream
-# PR #2228, gamescope patches 0007/0008): the msm DPU rejects DRM plane rotation, so we pass
-# --force-composition-rotation rather than trust the plane-capability autodetect.
-# --force-orientation sets the axis. See gamescope-rp6-gpu.
+# Panel geometry comes from the BSP's device.conf, with the admin override sourced last so it
+# wins; the fallbacks below are the RP6's values.
 for _dc in /usr/lib/pocknix/device.conf /etc/pocknix/device.conf; do
   [ -r "${_dc}" ] && . "${_dc}"
 done
@@ -105,36 +79,17 @@ case "${ORIENT}" in
   *)          GS_W="${W}"; GS_H="${H}" ;;
 esac
 
-# NO core pin: scx_lavd (latency- + heterogeneity-aware, pocknix-lavd.service) places the bursty
-# game/compositor threads on the big cores itself, AND needs the A510 littles free to offload batch
-# work (e.g. in-game Steam downloads) so the UI stays responsive — a hard taskset would fight it.
-# (The manual 3-7 pin was for the plain-EEVDF kernel; lavd supersedes it.)
+# Do NOT add a core pin here: scx_lavd places the bursty threads itself and needs the littles free
+# for batch work; a hard taskset fights it.
 
-# Steam client flags = armada's gamescope-session CLIENTCMD exactly
-# (`-gamepadui -steamos3 -steampal -steamdeck -noverifyfiles`). `-e` = gamescope --steam.
-#
-# LD_LIBRARY_PATH is set on the CLIENT via an INNER `env`, NOT on gamescope's environment. gamescope
-# carries CAP_SYS_NICE (a file capability, for realtime scheduling — see packages/gamescope), which
-# puts it in glibc secure-execution mode (AT_SECURE). In that mode glibc *removes* LD_LIBRARY_PATH
-# from the environment entirely; the steam client (gamescope's child) would then inherit an env
-# WITHOUT it and fail to load steamui.so's bundled libvpx.so.6 from steamrtarm64. Re-injecting it
-# with `env` right before the client restores it for the (non-secure) client. gamescope itself does
-# not need LD_LIBRARY_PATH (its libs are in the system paths).
-# Gamescope's output goes to its log file, NOT the tty: tty1 must stay blank, it's what shows
-# between compositors on a session switch (the supervisor keeps it cleared; a tee to tty+file here
-# used to replay the whole scrollback on every switch). Written in the deck HOME (deck can't write
-# /var/log — that failed with "Permission denied" and lost the log). pocknix-diag picks it up.
-# Truncated each launch. Still NOT exec'd; pkill -TERM gamescope (session switch) targets by name.
+# Log to a file, never the tty: tty1 must stay blank because it is what shows between compositors
+# on a session switch. It lives in the deck HOME because deck cannot write /var/log. Do NOT exec
+# gamescope either, since the session switch pkills it by name.
 GS_LOG="${HOME}/pocknix-steam.log"
-# Steam's gamepadui sizes its UI from the output's physical mm (DPI). 177x100 = armada's tested RP6
-# value (~275 DPI, handheld-correct UI); the old 508x286 was ~96 DPI -> a desktop monitor -> tiny UI.
-# The present-path env (vk_xwayland_wait_ready / GAMESCOPE_DISABLE_ASYNC_FLIPS / ENABLE_GAMESCOPE_WSI /
-# mesa_glthread), ported from gamescope-session-plus, was REMOVED 2026-07-01 after the deep off-CPU
-# investigation (docs/gamescope-fps-investigation.md): on-device A/B showed they don't affect fps, and
-# gamescope force-sets vk_xwayland_wait_ready / ENABLE_GAMESCOPE_WSI on its children anyway (so setting
-# them here was a no-op). GAMESCOPE_DISABLE_ASYNC_FLIPS=1 was a 120/3=40fps vsync staircase — dropping
-# it lets frames exceed 40. Now bare, matching ROCKNIX's launch. -noshaders matches ROCKNIX too (stops
-# Steam's fossilize background shader compile stealing CPU during play).
+# gamepadui sizes its UI from the output's physical mm: 177x100 is ~275 DPI (handheld-correct);
+# the ~96 DPI default reads as a desktop monitor and renders the UI tiny.
+# The present-path env vars belong nowhere here (see pocknix-notes dev/steam.md) and
+# -noshaders keeps Steam's fossilize compile from stealing CPU during play.
 env -u WAYLAND_DISPLAY \
   GAMESCOPE_FAKE_OUTPUT_MM="${PANEL_MM}" \
   gamescope -W "${GS_W}" -H "${GS_H}" -r "${REFRESH}" --xwayland-count 2 --mangoapp --backend drm \
